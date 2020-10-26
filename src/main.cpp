@@ -1,4 +1,3 @@
-#include "../hdr/main.h"
 #include "../hdr/routines.h"
 #include "../hdr/file.h"
 #include "../hdr/dir.h"
@@ -38,7 +37,7 @@ int main(int argc, char* argv[])
 
     bool promptUser = true;
     std::string input;
-    std::string fileName;\
+    std::string input2;
 
     cout << "Filesystem Menu" << endl;
 
@@ -58,10 +57,13 @@ int main(int argc, char* argv[])
         {
             case 1:
                 cout << "Please enter a filename for the new filesystem: ";
-                std::getline(std::cin, fileName);
-                format(fileName);
+                std::getline(std::cin, input2);
+                format(input2);
                 break;
             case 2:
+                cout << "Please enter a filename to mount: ";
+                std::getline(std::cin, input2);
+                mount(input2);
                 break;
             case 3:
                 break;
