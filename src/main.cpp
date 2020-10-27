@@ -1,10 +1,15 @@
 #include "../hdr/routines.h"
 #include "../hdr/file.h"
 #include "../hdr/dir.h"
+#include "../hdr/filesys.h"
+
+// GLOBAL FILESYSTEM 
+filesys* myFilesys;
 
 void promptUserWithMenu()
 {
     using namespace std;
+    cout << "Filesystem Menu" << endl;
     cout << endl;
     cout << "1) Format a file system" << endl;
     cout << "2) Mount a file system" << endl;
@@ -39,8 +44,6 @@ int main(int argc, char* argv[])
     std::string input;
     std::string input2;
 
-    cout << "Filesystem Menu" << endl;
-
     while (promptUser)
     {
         promptUserWithMenu();
@@ -53,25 +56,51 @@ int main(int argc, char* argv[])
         if (is_number(input))
             inputInt = std::stoi( input );
 
+        int ret;
+
         switch (inputInt)
         {
             case 1:
-                cout << "Please enter a filename for the new filesystem: ";
+                cout << "Enter a filename for the new filesystem: ";
                 std::getline(std::cin, input2);
-                format(input2);
+                ret = format(input2);
+                if (ret == -1)
+                    cout << "\nFilesystem failed to format\n\n" << endl;
+                else
+                    cout << "\n" << input2 << " has been successfully formatted\n\n" << endl;
                 break;
+
             case 2:
-                cout << "Please enter a filename to mount: ";
+                cout << "Enter a filename to mount: ";
                 std::getline(std::cin, input2);
-                mount(input2);
+                ret = mount(input2);
+
+                if (ret == -1)
+                    cout << "\nFilesystem failed to mount\n\n" << endl;
+                else
+                    cout << "\n" << input2 << " has been successfully mounted\n\n" << endl;
                 break;
+
             case 3:
+                if (!myFilesys) 
+                {
+                    cout << "\nFilesystem needs to be mounted" << endl;
+                    break;
+                }
+
+                cout << "Enter path to a new directory: ";
+                std::getline(std::cin, input2);
+                ret = dir_create(input2);
+                cout << ret << endl;
                 break;
             case 4:
                 break;
             case 5:
                 break;
             case 6:
+                cout << "Enter a path to a new file: ";
+                std::getline(std::cin, input2);
+                ret = file_create(input2);
                 break;
             case 7:
                 break;
@@ -98,4 +127,7 @@ int main(int argc, char* argv[])
         }
 
     }
+
+    delete myFilesys;
+
 }

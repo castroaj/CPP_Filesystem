@@ -1,4 +1,7 @@
 #include "../hdr/routines.h"
+#include "../hdr/filesys.h"
+
+extern class filesys* myFilesys;
 
 int format(std::string fileName)
 {
@@ -10,10 +13,10 @@ int format(std::string fileName)
     std::memset(partition, 0, sizeof(partition_t));
 
     // initalize superblock
-    partition->superblock.magic_num = 12345;
-    partition->superblock.reserved_sectors = 1;
-    partition->superblock.inode_sectors = 9;
-    partition->superblock.data_sectors = 246;
+    partition->superblock.magic_num = MAGIC_NUM;
+    partition->superblock.reserved_sectors = RESERVED_SECTORS;
+    partition->superblock.inode_sectors = INODE_SECTORS;
+    partition->superblock.data_sectors = DATA_SECTORS;
     
     // Set first inode as allocated for root directory
     partition->superblock.inode_bmap[0] = 1;
@@ -43,6 +46,10 @@ int format(std::string fileName)
 
     // Open and write partition to specified file
     FILE* fd = fopen(fn, "w+");
+
+    if (!fd) 
+        return -1;
+
     fwrite((void*) partition, sizeof(partition_t), 1, fd);
     fclose(fd);
     free(partition);
@@ -52,8 +59,33 @@ int format(std::string fileName)
 
 int mount(std::string fileName)
 {
-    
+    if (myFilesys)
+        return -1;
 
+    // Convert filename to char ptr
+    char fn[fileName.length() + 1];
+    strcpy(fn, fileName.c_str());
+
+    // Open file and check to see if it exists
+    FILE* fd = fopen(fn, "r+");
+    if (!fd) 
+        return -1;
+
+    uint8_t buffer[sizeof(superblock_t)];
+    if (fread(buffer, sizeof(superblock_t), 1, fd) == 0) 
+    {
+        return -1;
+    }
+
+    superblock_t* superblock = (superblock_t *) buffer;
+
+    if (superblock->magic_num != MAGIC_NUM)
+        return -1;
+
+    rewind(fd);
+
+    myFilesys = new filesys(true);
+    myFilesys->setPartitionPtr(fd);
 
     return 0;
 }
