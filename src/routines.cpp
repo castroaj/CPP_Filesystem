@@ -19,10 +19,10 @@ int format(std::string fileName)
     partition->superblock.data_sectors = DATA_SECTORS;
     
     // Set first inode as allocated for root directory
-    partition->superblock.inode_bmap[0] = 1;
+    partition->superblock.inode_bmap[0] = 0x11;
 
     // Set first dblock as allocated for root directory
-    partition->superblock.dblock_bmap[0] = 1;
+    partition->superblock.dblock_bmap[0] = 0x11;
 
     // Get first inode block
     inode_block_t* first_inode_block = (inode_block_t*) &partition->inode_blocks;
@@ -31,8 +31,8 @@ int format(std::string fileName)
     inode_t* root_dir_inode = (inode_t*) &first_inode_block->inodes[0];
 
     // Setup Root directory inode
-    root_dir_inode->state = 1111;
-    root_dir_inode->type = 3333;
+    root_dir_inode->state = 0x1111;
+    root_dir_inode->type = 0x3333;
     root_dir_inode->size = 0;
     int8_t* data_block_arr = (int8_t*) &root_dir_inode->datablocks;
     std::memset(data_block_arr, -1, sizeof(root_dir_inode->datablocks));

@@ -44,7 +44,7 @@
             uint16_t state;
             uint16_t type;
             uint16_t size; 
-            int8_t datablocks[26];
+            uint8_t datablocks[26];
         } inode_t;
 
     #endif

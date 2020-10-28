@@ -37,15 +37,12 @@ int dir_create(std::string filepath)
     uint8_t inode_buffer[sizeof(inode_t)];
     inode_t* inode = (inode_t*) &inode_buffer;
 
-    // Declare memory for found datablock
-    uint8_t datablock[SECTOR_SIZE];
-    uint8_t* db_ptr = (uint8_t *) datablock;
-
     /////////////////////////////////////////////////////////////////////
     // Read data into each of the above buffers
     /////////////////////////////////////////////////////////////////////
 
     // Read Superblock
+    fseek(fp, 0, SEEK_SET);
     fread(superblock_buffer, sizeof(superblock_t), 1, fp);
 
     // Find and read the inode
@@ -59,16 +56,6 @@ int dir_create(std::string filepath)
     // Calculate offsets
     int bitmap_index = (inode->size / 20) / 25;
     int new_entry_index = ((inode->size / 20) % 25);
-
-    // Get the datablock bitmap from the inode
-    int8_t* db_bm = (int8_t *) &inode->datablocks;
-
-    // Get the data block index for the new entry
-    db_bm += bitmap_index;
-    int data_block = *db_bm; 
-
-    // Advance pointer to where new entry will go
-    db_ptr += (new_entry_index * sizeof(dir_entry_t));
 
     ///////////////////////////////////////////////////////////////////////
     // Update directory inode
@@ -85,47 +72,24 @@ int dir_create(std::string filepath)
     // Create new inode for new directory
     ///////////////////////////////////////////////////////////////////////
 
-    // Get inode bmap from superblock
-    uint8_t* inode_bm = (uint8_t *) &sb->inode_bmap;
-    
-    // Get db bmap from superblock
-    uint8_t* db_bmap = (uint8_t *) &sb->dblock_bmap;
-
     // Declare indexes
-    int new_inode_index = -1;
-    int new_db_index = -1;
+    int new_inode_index = find_first_available_in_bitmap((uint8_t *) &sb->inode_bmap, sizeof(sb->inode_bmap));
+    int new_db_index = find_first_available_in_bitmap((uint8_t *) &sb->dblock_bmap, sizeof(sb->dblock_bmap));
 
-    // Find first available inode index
-    for (unsigned int i = 0; i < sizeof(sb->inode_bmap); i++)
-    {
-        if (*inode_bm == 0)
-        {
-            *inode_bm = 1;
-            new_inode_index = i;
-            break;
-        }
-        inode_bm++;
-    }
+    if (new_inode_index == -1) return -1;
+    if (new_db_index == -1) return -1;
 
-    // Find first available datablock index
-    for (unsigned int i = 0; i < sizeof(sb->dblock_bmap); i++)
-    {
-        if (*db_bmap == 0)
-        {
-            *db_bmap = 1;
-            new_db_index = i;
-            break;
-        }
-        db_bmap++;
-    }
+    // Update superblock bitmap
+    sb->inode_bmap[new_inode_index] = 0x11;
+    sb->dblock_bmap[new_db_index] = 0x11;
 
     inode_t new_inode;
 
-    new_inode.state = 1111;
-    new_inode.type = 3333;
+    new_inode.state = 0x1111;
+    new_inode.type = 0x3333;
     new_inode.size = 0;
     int8_t* data_block_arr = (int8_t*) &new_inode.datablocks;
-    std::memset(data_block_arr, -1, sizeof(new_inode.datablocks));
+    std::memset(data_block_arr, 255, sizeof(new_inode.datablocks));
     *data_block_arr = new_db_index;
 
     fseek(fp, sizeof(superblock_t) + (new_inode_index * sizeof(inode_t)), SEEK_SET);
@@ -142,25 +106,14 @@ int dir_create(std::string filepath)
     // Write new entry to Datablock
     ////////////////////////////////////////////////////////////////////////
 
-    // Find and read datablock
-    fseek(fp, sizeof(superblock_t) + (9 * sizeof(inode_block_t)) + (*db_bm * sizeof(data_block_t)), SEEK_SET);
-    fread(datablock, SECTOR_SIZE, 1, fp);
+    // Get the datablock bitmap from the inode
+    uint8_t* db_bm = (uint8_t *) &inode->datablocks;
 
-    // Convert filename to char ptr
-    std::string dir = dirs.at(dirs.size() -1);    
-    char char_dir[16];
-    memset(char_dir, 0, 16);
-    strcpy(char_dir, dir.c_str());
+    // Get the data block index for the new entry
+    db_bm += bitmap_index;
+    int data_block = *db_bm; 
 
-    dir_entry_t new_entry;
-    memcpy(&new_entry.filename, char_dir, 16);
-    new_entry.inode_num = new_inode_index;
-
-    // Write new data block to file
-    fseek(fp, sizeof(superblock_t) + (9 * sizeof(inode_block_t)) + (*db_bm * sizeof(data_block_t) + ( new_entry_index * sizeof(dir_entry_t))), SEEK_SET);
-    fwrite(&new_entry, sizeof(dir_entry_t), 1, fp);
-
-    rewind(fp);
+    write_new_directory_entry_to_data_block(fp, dirs.at(dirs.size() - 1), new_inode_index, *db_bm, new_entry_index);
 
     return 0;
 }
