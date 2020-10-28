@@ -4,5 +4,6 @@
 #define DIR_H
 
 int dir_create(std::string filepath);
+int dir_size(std::string filepath);
 
 #endif

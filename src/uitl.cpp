@@ -51,40 +51,14 @@ int get_last_directory_inode_index(std::vector<std::string>* dirs, FILE* fp, int
     memset(dirToLookFor, 0, 16);
     strcpy(dirToLookFor, toLookFor.c_str());
 
-    int8_t* db = (int8_t *) &inode->datablocks;
+    uint8_t* db = (uint8_t *) &inode->datablocks;
 
-    for (unsigned int i = 0; i < 26; i++)
-    {
-        if (*db != -1)
-        {
-            uint8_t datablock[SECTOR_SIZE];
-            dir_entry_t* datablock_entry = (dir_entry_t*) &datablock;
+    uint32_t inode_num = traverse_directory_for_filename(fp, db, (char *) &dirToLookFor);
 
-            fseek(fp, sizeof(superblock_t) + (9 * sizeof(inode_block_t)) + (*db * sizeof(data_block_t)), SEEK_SET);
-            fread(datablock, SECTOR_SIZE, 1, fp);
-
-            for (int j = 0; j < SECTOR_SIZE / sizeof(dir_entry_t); j++)
-            {   
-                uint32_t cur_inode = datablock_entry->inode_num;
-
-                if (cur_inode > 0)
-                {
-                    char* cur_dir_name_ptr = (char *) &datablock_entry->filename;
-
-                    if (strcmp(cur_dir_name_ptr, (char*) &dirToLookFor) == 0)
-                    {
-                        rewind(fp);
-                        return get_last_directory_inode_index(dirs, fp, cur_inode);
-                    }
-
-                }
-                datablock_entry++;
-            }
-        }
-        db++;
-    }
-    
-    return -1;
+    if (inode_num == 255) 
+        return -1;
+    else
+        return get_last_directory_inode_index(dirs, fp, inode_num);
 }
 
 int find_first_available_in_bitmap(uint8_t* bitmap, int len)
@@ -128,5 +102,103 @@ void write_new_directory_entry_to_data_block(FILE* fp, std::string dir, int new_
     fwrite(&new_entry, sizeof(dir_entry_t), 1, fp);
 
     rewind(fp);
+}
+
+uint32_t traverse_directory_for_filename(FILE* fp, uint8_t* db, char* dirToLookFor)
+{
+    for (unsigned int i = 0; i < 26; i++)
+    {
+        if (*db != 0xff)
+        {
+            uint8_t datablock[SECTOR_SIZE];
+            dir_entry_t* datablock_entry = (dir_entry_t*) &datablock;
+
+            fseek(fp, sizeof(superblock_t) + (9 * sizeof(inode_block_t)) + (*db * sizeof(data_block_t)), SEEK_SET);
+            fread(datablock, SECTOR_SIZE, 1, fp);
+
+            for (int j = 0; j < SECTOR_SIZE / sizeof(dir_entry_t); j++)
+            {   
+                uint32_t cur_inode = datablock_entry->inode_num;
+
+                if (cur_inode > 0)
+                {
+                    char* cur_dir_name_ptr = (char *) &datablock_entry->filename;
+
+                    if (strcmp(cur_dir_name_ptr, (char*) dirToLookFor) == 0)
+                    {
+                        return cur_inode;
+                    }
+                }
+                datablock_entry++;
+            }
+        }
+        db++;
+    }
+    return 255;
+}
+
+uint32_t get_all_content_from_directory(FILE* fp, uint8_t* db, std::vector<dir_entry_t *>* dir_entries)
+{
+    uint32_t totalCount = 0;
+
+    for (unsigned int i = 0; i < 26; i++)
+    {
+        if (*db != 0xff)
+        {
+            uint8_t datablock[SECTOR_SIZE];
+            dir_entry_t* datablock_entry = (dir_entry_t*) &datablock;
+
+            fseek(fp, sizeof(superblock_t) + (9 * sizeof(inode_block_t)) + (*db * sizeof(data_block_t)), SEEK_SET);
+            fread(datablock, SECTOR_SIZE, 1, fp);
+
+            for (int j = 0; j < SECTOR_SIZE / sizeof(dir_entry_t); j++)
+            {   
+                uint32_t cur_inode = datablock_entry->inode_num;
+
+                if (cur_inode > 0)
+                {
+                    dir_entry_t* new_dir_entry = (dir_entry_t *) malloc(sizeof(dir_entry_t));
+                    memcpy(new_dir_entry, datablock_entry, sizeof(dir_entry_t));
+
+                    dir_entries->push_back(new_dir_entry);
+
+                    totalCount++;
+                }
+                datablock_entry++;
+            }
+        }
+        db++;
+    }
+    return totalCount;
+}
+
+uint32_t get_number_of_items_in_directory(FILE* fp, uint8_t* db)
+{
+    uint32_t totalCount = 0;
+
+    for (unsigned int i = 0; i < 26; i++)
+    {
+        if (*db != 0xff)
+        {
+            uint8_t datablock[SECTOR_SIZE];
+            dir_entry_t* datablock_entry = (dir_entry_t*) &datablock;
+
+            fseek(fp, sizeof(superblock_t) + (9 * sizeof(inode_block_t)) + (*db * sizeof(data_block_t)), SEEK_SET);
+            fread(datablock, SECTOR_SIZE, 1, fp);
+
+            for (int j = 0; j < SECTOR_SIZE / sizeof(dir_entry_t); j++)
+            {   
+                uint32_t cur_inode = datablock_entry->inode_num;
+
+                if (cur_inode > 0)
+                {
+                    totalCount++;
+                }
+                datablock_entry++;
+            }
+        }
+        db++;
+    }
+    return totalCount;
 }
 

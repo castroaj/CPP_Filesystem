@@ -93,33 +93,55 @@ int main(int argc, char* argv[])
                 ret = dir_create(input2);
                 cout << ret << endl;
                 break;
+
             case 4:
                 break;
+
             case 5:
+                if (!myFilesys) 
+                {
+                    cout << "\nFilesystem needs to be mounted" << endl;
+                    break;
+                }
+
+                cout << "Enter a path to the directory: ";
+                std::getline(std::cin, input2);
+                ret = dir_size(input2);
+                cout << "Number of items: " << ret << endl;
                 break;
+
             case 6:
                 cout << "Enter a path to a new file: ";
                 std::getline(std::cin, input2);
                 ret = file_create(input2);
                 break;
+
             case 7:
                 break;
+
             case 8:
                 break;
+
             case 9:
                 break;
+
             case 10:
                 break;
+
             case 11:
                 break;
+
             case 12:
                 break;
+
             case 13:
                 break;
+
             case 14:
                 cout << "\nExiting the program" << endl;
                 promptUser = false;
                 break;
+                
             default:
                 cout << "\nInvalid Input" << endl;
                 promptUser = true;

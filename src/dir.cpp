@@ -50,6 +50,37 @@ int dir_create(std::string filepath)
     fread(inode_buffer, sizeof(inode_t), 1, fp);
 
     ///////////////////////////////////////////////////////////////////////
+    // Check to see if directory already exists
+    ///////////////////////////////////////////////////////////////////////
+
+    // Get the datablock bitmap from the inode
+    uint8_t* db_bm = (uint8_t *) &inode->datablocks;
+
+    std::vector<dir_entry_t*> dir_entries;
+
+    int num_of_items = get_all_content_from_directory(fp, db_bm, &dir_entries);
+    bool dir_already_exists = false;
+
+    for (uint8_t i = 0; i < dir_entries.size(); i++)
+    {
+        dir_entry_t* cur_dir = dir_entries.at(0);
+
+        char dirToLookFor[16];
+        memset(dirToLookFor, 0, 16);
+        strcpy(dirToLookFor, dirs.at(dirs.size() - 1 ).c_str());
+
+        if (strcmp((char *) &cur_dir->filename, (char *) &dirToLookFor) == 0)
+        {
+            std::cout << "Filenames are the same" << std::endl;
+            dir_already_exists = true;
+            free(cur_dir);
+        }
+    }
+
+    if (dir_already_exists)
+        return -1;
+
+    ///////////////////////////////////////////////////////////////////////
     // Do calculations for db indexing
     ///////////////////////////////////////////////////////////////////////
 
@@ -106,9 +137,6 @@ int dir_create(std::string filepath)
     // Write new entry to Datablock
     ////////////////////////////////////////////////////////////////////////
 
-    // Get the datablock bitmap from the inode
-    uint8_t* db_bm = (uint8_t *) &inode->datablocks;
-
     // Get the data block index for the new entry
     db_bm += bitmap_index;
     int data_block = *db_bm; 
@@ -120,5 +148,37 @@ int dir_create(std::string filepath)
 
 int dir_size(std::string filepath)
 {
-    return 0;
+    // Copy the filepath to new string
+    std::string fpcpy = filepath;
+
+    // Check to see if filepath is valid
+    if (filepath.size() == 0 || filepath.at(0) != '/')
+        return -1;
+    
+    // Create a vector of all the directories that need to be visited
+    std::vector<std::string> dirs;
+    if (filepath.compare("/") != 0)
+        make_vector_of_directories(filepath, &dirs);
+    else
+        dirs.push_back(filepath);
+
+    FILE* fp = myFilesys->getPartitionPtr();
+
+    // Find the inode of the last directory in the given filepath
+    int fin_dir_inode_index = get_last_directory_inode_index(&dirs, fp, 0);
+
+    if (fin_dir_inode_index == -1)
+        return -1;
+
+    // Declare memory for found inode
+    uint8_t inode_buffer[sizeof(inode_t)];
+    inode_t* inode = (inode_t*) &inode_buffer;
+
+    // Find and read the inode
+    fseek(fp, sizeof(superblock_t) + (fin_dir_inode_index * sizeof(inode_t)), SEEK_SET);
+    fread(inode_buffer, sizeof(inode_t), 1, fp);
+
+    uint8_t* db = (uint8_t *) &inode->datablocks;
+
+    return get_number_of_items_in_directory(fp, db);
 }
