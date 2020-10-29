@@ -106,14 +106,21 @@ int main(int argc, char* argv[])
 
                 cout << "Enter a path to the directory: ";
                 std::getline(std::cin, input2);
-                ret = dir_size(input2);
-                cout << "Number of items: " << ret << endl;
+                ret = dir_read(input2);
+                cout << ret << endl;
                 break;
 
             case 6:
+                if (!myFilesys) 
+                {
+                    cout << "\nFilesystem needs to be mounted" << endl;
+                    break;
+                }
+
                 cout << "Enter a path to a new file: ";
                 std::getline(std::cin, input2);
                 ret = file_create(input2);
+                cout << ret << endl;
                 break;
 
             case 7:

@@ -26,10 +26,14 @@ bool make_vector_of_directories(std::string filepath, std::vector<std::string>* 
 }
 
 
-int get_last_directory_inode_index(std::vector<std::string>* dirs, FILE* fp, int inode_index)
+int get_last_directory_inode_index(std::vector<std::string>* dirs, FILE* fp, int inode_index, bool go_to_len_zero)
 {
-    if (dirs->size() == 1)
+    if (dirs->size() == 1 && !go_to_len_zero)
         return inode_index;
+
+    if (dirs->size() == 0 && go_to_len_zero)
+        return inode_index;
+
 
     uint8_t inode_buffer[sizeof(inode_t)];
     inode_t* inode = (inode_t*) &inode_buffer;
@@ -39,7 +43,7 @@ int get_last_directory_inode_index(std::vector<std::string>* dirs, FILE* fp, int
     fread(inode_buffer, sizeof(inode_t), 1, fp);
 
     if (inode->type != 0x3333)
-        return inode_index;
+        return -1;
 
     if (inode->size == 0)
         return -1;
@@ -58,7 +62,7 @@ int get_last_directory_inode_index(std::vector<std::string>* dirs, FILE* fp, int
     if (inode_num == 255) 
         return -1;
     else
-        return get_last_directory_inode_index(dirs, fp, inode_num);
+        return get_last_directory_inode_index(dirs, fp, inode_num, go_to_len_zero);
 }
 
 int find_first_available_in_bitmap(uint8_t* bitmap, int len)
@@ -78,23 +82,51 @@ int find_first_available_in_bitmap(uint8_t* bitmap, int len)
     return -1;
 }
 
-void write_new_directory_entry_to_data_block(FILE* fp, std::string dir, int new_inode_index, int data_block_index, int new_entry_index)
+int find_first_unallocated_db_index(uint8_t* bitmap, int len)
 {
-    // Declare memory for found datablock
-    uint8_t datablock[SECTOR_SIZE];
-    uint8_t* db_ptr = (uint8_t *) &datablock;
+    uint8_t* cpy_ptr = bitmap;
 
-    // Find and read datablock
-    fseek(fp, sizeof(superblock_t) + (9 * sizeof(inode_block_t)) + (data_block_index * sizeof(data_block_t)), SEEK_SET);
-    fread(datablock, SECTOR_SIZE, 1, fp);
+    // Find first available inode index
+    for (unsigned int i = 0; i < len; i++)
+    {
+        if (*cpy_ptr == 0xff)
+        {
+            return i;
+        }
+        cpy_ptr++;
+    }
 
+    return -1;
+}
+
+
+int find_number_of_allocated_db(uint8_t* db, int len)
+{
+    uint8_t* cpy_ptr = db;
+
+    int count = 0;
+
+    // Find first available inode index
+    for (unsigned int i = 0; i < len; i++)
+    {
+        if (*cpy_ptr != 0xff)
+        {
+            count++;
+        }
+        cpy_ptr++;
+    }
+    return count;
+}
+
+void write_new_entry_to_data_block(FILE* fp, std::string filename, int new_inode_index, int data_block_index, int new_entry_index)
+{
     // Convert filename to char ptr
-    char char_dir[16];
-    memset(char_dir, 0, 16);
-    strcpy(char_dir, dir.c_str());
+    char char_fn[16];
+    memset(char_fn, 0, 16);
+    strcpy(char_fn, filename.c_str());
 
     dir_entry_t new_entry;
-    memcpy(&new_entry.filename, char_dir, 16);
+    memcpy(&new_entry.filename, char_fn, 16);
     new_entry.inode_num = new_inode_index;
 
     // Write new data block to file
