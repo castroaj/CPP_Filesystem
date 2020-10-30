@@ -160,3 +160,63 @@ int file_create(std::string filepath)
     
     return 0;
 }
+
+int file_open(std::string filepath)
+{
+    // Copy the filepath to new string
+    std::string fpcpy = filepath;
+    bool go_to_len_zero = true;
+
+    // Check to see if filepath is valid
+    if (filepath.size() == 0 || filepath.at(0) != '/' || filepath.compare("/") == 0)
+        return -1;
+    
+    // Create a vector of all the directories that need to be visited
+    std::vector<std::string> dirs;
+    make_vector_of_directories(filepath, &dirs);
+
+    FILE* fp = myFilesys->getPartitionPtr();
+
+    // Find the inode of the last directory in the given filepath
+    int fin_dir_inode_index = get_last_directory_inode_index(&dirs, fp, 0, go_to_len_zero);
+
+    if (fin_dir_inode_index == -1)
+        return -1;
+
+    // Declare memory for found inode
+    uint8_t inode_buffer[sizeof(inode_t)];
+    inode_t* inode = (inode_t*) &inode_buffer;
+
+    // Find and read the inode
+    fseek(fp, sizeof(superblock_t) + (fin_dir_inode_index * sizeof(inode_t)), SEEK_SET);
+    fread(inode_buffer, sizeof(inode_t), 1, fp);
+
+    if (inode->type != 0x2222)
+        return -1;
+
+    file_table_t* ft = myFilesys->getFileTable();
+
+    int next_fd = find_next_available_file_descriptor(ft);
+
+    std::cout << next_fd << std::endl;
+
+    if (next_fd == -1)
+        return -1;
+
+    // Used for indexing
+    file_table_entry_t* cur_entry = (file_table_entry_t *) ft;
+    cur_entry += next_fd;
+
+    file_table_entry_t new_entry;
+
+    new_entry.isAllocated = true;
+    new_entry.inode_num = fin_dir_inode_index;
+    new_entry.size = inode->size;
+    new_entry.file_ptr = fp;
+    memcpy(&new_entry.datablocks, &inode->datablocks, sizeof(inode->datablocks));
+
+    // Copy new entry into file table
+    memcpy(cur_entry, &new_entry, sizeof(file_table_entry_t));
+
+    return 0;
+}

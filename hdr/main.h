@@ -1,3 +1,12 @@
+/***********************************************************************
+ * CS-450 PA3: Header file import standard libary packages and declare
+ *             necessary data structures for the application.
+ * 
+ * @file main.h
+ * @author Alexander Castro
+ * @version 1.0 10/29/20
+ ***********************************************************************/
+
 #ifndef MAIN_H
 #define MAIN_H
 
@@ -90,10 +99,11 @@
     #define FILE_TABLE_ENTRY
 
         typedef struct {
-            uint8_t file_descriptor;
-            uint8_t* file_ptr;
+            bool isAllocated;
+            uint32_t inode_num;
             uint16_t size;
-            int8_t datablocks[26];
+            FILE* file_ptr;
+            uint8_t datablocks[26];
         } file_table_entry_t;
 
     #endif

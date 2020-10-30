@@ -1,3 +1,12 @@
+/***********************************************************************
+ * CS-450 PA3: Set of helper functions that abstract away some of the 
+ *             reusable functionality within the application.
+ * 
+ * @file util.h
+ * @author Alexander Castro
+ * @version 1.0 10/29/20
+ ***********************************************************************/
+
 #include "main.h"
 
 #ifndef UTIL_H
@@ -12,5 +21,6 @@ void write_new_entry_to_data_block(FILE* fp, std::string filename, int new_inode
 uint32_t traverse_directory_for_filename(FILE* fp, uint8_t* db, char* dirToLookFor);
 uint32_t get_all_content_from_directory(FILE* fp, uint8_t* db, std::vector<dir_entry_t*>* dir_entries);
 uint32_t get_number_of_items_in_directory(FILE* fp, uint8_t* db);
+int find_next_available_file_descriptor(file_table_t* ft);
 
 #endif

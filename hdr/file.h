@@ -5,4 +5,6 @@
 
 int file_create(std::string filepath);
 
+int file_open(std::string filepath);
+
 #endif

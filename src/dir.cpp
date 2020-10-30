@@ -197,9 +197,7 @@ int dir_size(std::string filepath)
     fseek(fp, sizeof(superblock_t) + (fin_dir_inode_index * sizeof(inode_t)), SEEK_SET);
     fread(inode_buffer, sizeof(inode_t), 1, fp);
 
-    uint8_t* db = (uint8_t *) &inode->datablocks;
-
-    return get_number_of_items_in_directory(fp, db);
+    return inode->size;
 }
 
 int dir_read(std::string filepath)

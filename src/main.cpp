@@ -127,6 +127,19 @@ int main(int argc, char* argv[])
                 break;
 
             case 8:
+                if (!myFilesys) 
+                {
+                    cout << "\nFilesystem needs to be mounted" << endl;
+                    break;
+                }
+
+                cout << "Enter a path to a new file: ";
+                std::getline(std::cin, input2);
+                ret = file_open(input2);
+
+                cout << ret << endl;
+                cout << myFilesys << endl;
+
                 break;
 
             case 9:

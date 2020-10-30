@@ -25,7 +25,6 @@ bool make_vector_of_directories(std::string filepath, std::vector<std::string>* 
     return true;
 }
 
-
 int get_last_directory_inode_index(std::vector<std::string>* dirs, FILE* fp, int inode_index, bool go_to_len_zero)
 {
     if (dirs->size() == 1 && !go_to_len_zero)
@@ -234,3 +233,17 @@ uint32_t get_number_of_items_in_directory(FILE* fp, uint8_t* db)
     return totalCount;
 }
 
+int find_next_available_file_descriptor(file_table_t* ft)
+{
+    for (int i = 0; i < sizeof(ft->entries); i++)
+    {
+        file_table_entry_t* cur_entry = &ft->entries[i];
+
+        if (!cur_entry->isAllocated)
+        {
+            return i;
+        }
+        ft++;
+    }
+    return -1;
+}

@@ -5,6 +5,8 @@ filesys::filesys(bool mounted)
 {
     // Init file table
     m_file_table = (file_table_t *) malloc(sizeof(file_table_t));
+
+    memset(m_file_table, 0xff, sizeof(file_table_t));
 }
 
 
