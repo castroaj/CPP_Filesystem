@@ -1,7 +1,8 @@
-#include "../hdr/routines.h"
+#include "../hdr/util.h"
 #include "../hdr/file.h"
 #include "../hdr/dir.h"
 #include "../hdr/filesys.h"
+#include "../hdr/helper.h"
 
 // GLOBAL FILESYSTEM 
 filesys* myFilesys;
@@ -35,6 +36,28 @@ bool is_number(const std::string& s)
     return !s.empty() && it == s.end();
 }
 
+bool check_if_mounted()
+{
+    if (!myFilesys) 
+    {
+        std::cout << "\nFilesystem needs to be mounted" << std::endl;
+        return false;
+    }
+    return true;
+}
+
+int write_helper(std::string input3, int fd, int num_of_bytes)
+{
+    uint8_t buffer[num_of_bytes];
+    int bytes_read = read_file_from_stu(input3, buffer, num_of_bytes);
+
+    if (num_of_bytes != 0 && bytes_read != 0)
+        return file_write(fd, buffer, bytes_read);
+    else
+        return -1;
+}
+
+
 void print_open_file_table()
 {
 	file_table_t* ft = (file_table_t *) myFilesys->getFileTable();
@@ -45,7 +68,7 @@ void print_open_file_table()
     {
         if (ft_entry->isAllocated != 255)
         {
-            std::cout << "Descriptor: " << i << " | IsAllocated: " << ft_entry->isAllocated << " | Inode Number: " << ft_entry->inode_num  << " | Size: " << ft_entry->size << " | File Offset: " <<  ft_entry->file_offset << std::endl;
+            std::cout << "Descriptor: " << i << " | IsAllocated: " << ft_entry->isAllocated << " | Inode Number: " << ft_entry->inode_num  << " | File Offset: " <<  ft_entry->file_offset << std::endl;
         }
         ft_entry++;
     }
@@ -60,6 +83,8 @@ int main(int argc, char* argv[])
     bool promptUser = true;
     std::string input;
     std::string input2;
+    std::string input3;
+    std::string input4;
 
     while (promptUser)
     {
@@ -69,6 +94,8 @@ int main(int argc, char* argv[])
         std::getline(std::cin, input);
 
         int inputInt = -1;
+        int fd = -1;
+        int num_of_bytes = -1;
 
         if (is_number(input))
             inputInt = std::stoi( input );
@@ -108,11 +135,8 @@ int main(int argc, char* argv[])
              * CREATE DIRECTORY
              */ 
             case 3:
-                if (!myFilesys) 
-                {
-                    cout << "\nFilesystem needs to be mounted" << endl;
+                if (!check_if_mounted())
                     break;
-                }
 
                 cout << "Enter path to a new directory: ";
                 std::getline(std::cin, input2);
@@ -130,11 +154,8 @@ int main(int argc, char* argv[])
              * LIST CONTENTS OF DIRECTORY
              */ 
             case 5:
-                if (!myFilesys) 
-                {
-                    cout << "\nFilesystem needs to be mounted" << endl;
+                if (!check_if_mounted())
                     break;
-                }
 
                 cout << "Enter a path to the directory: ";
                 std::getline(std::cin, input2);
@@ -146,11 +167,8 @@ int main(int argc, char* argv[])
              * CREATE A FILE
              */ 
             case 6:
-                if (!myFilesys) 
-                {
-                    cout << "\nFilesystem needs to be mounted" << endl;
+                if (!check_if_mounted())
                     break;
-                }
 
                 cout << "Enter a path to a new file: ";
                 std::getline(std::cin, input2);
@@ -168,17 +186,17 @@ int main(int argc, char* argv[])
              * OPEN A FILE
              */ 
             case 8:
-                if (!myFilesys) 
-                {
-                    cout << "\nFilesystem needs to be mounted" << endl;
+                if (!check_if_mounted())
                     break;
-                }
 
                 cout << "Enter a path to the file you wish to open: ";
                 std::getline(std::cin, input2);
                 ret = file_open(input2);
 
-                cout << ret << endl;
+                if (ret != -1)
+                    cout << "\nThe file has been opened.\nThe file descriptor is " << ret << "\n" << endl;
+                else
+                    cout << "\nThe file failed to open\n" << endl;
 
                 break;
 
@@ -186,12 +204,39 @@ int main(int argc, char* argv[])
              * READ FROM FILE
              */ 
             case 9:
+
                 break;
 
             /**
              * WRITE TO A FILE
              */ 
             case 10:
+                if (!check_if_mounted())
+                    break;
+
+                cout << "Enter a file descriptor to write to: ";
+                std::getline(std::cin, input2);
+
+                // Validate that the input is a number 
+                if (is_number(input2))
+                    fd = std::stoi( input2 ); 
+                else
+                    break;
+
+                cout << "Enter the name of a file on stu: ";
+                std::getline(std::cin, input3);
+
+                cout << "Enter the number of bytes to write: ";
+                std:: getline(std::cin, input4);
+
+                // Validate that the input is a number
+                if (is_number(input4))
+                    num_of_bytes = std::stoi( input4 );
+                else
+                    break;
+
+                ret = write_helper(input3, fd, num_of_bytes);
+                cout << ret << endl;
                 break;
 
             /**
@@ -224,12 +269,8 @@ int main(int argc, char* argv[])
              * PRINT FILE TABLE
              */ 
             case 15:
-
-                if (!myFilesys) 
-                {
-                    cout << "\nFilesystem needs to be mounted" << endl;
+                if (!check_if_mounted())
                     break;
-                }
 
 		        print_open_file_table();
 		        break;

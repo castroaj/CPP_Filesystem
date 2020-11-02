@@ -3,7 +3,8 @@
         {
             "name": "Win32",
             "includePath": [
-                "${workspaceFolder}/**"
+                "${workspaceFolder}/**",
+                "A:\\cs450\\CS450-PA3\\hdr"
             ],
             "defines": [
                 "_DEBUG",

@@ -1,5 +1,5 @@
 #include "../hdr/file.h"
-#include "../hdr/util.h"
+#include "../hdr/helper.h"
 #include "../hdr/filesys.h"
 
 extern class filesys* myFilesys;
@@ -225,12 +225,113 @@ int file_open(std::string filepath)
 
     new_entry.isAllocated = true;
     new_entry.inode_num = fin_dir_inode_index;
-    new_entry.size = inode->size;
     new_entry.file_offset = 0;
-    memcpy(&new_entry.datablocks, &inode->datablocks, sizeof(inode->datablocks));
 
     // Copy new entry into file table
     memcpy(cur_entry, &new_entry, sizeof(file_table_entry_t));
 
-    return 0;
+    return next_fd;
+}
+
+int file_read(int file_descriptor, uint8_t* buffer, int bytes_to_read)
+{
+    return -1;
+}
+
+int file_write(int file_descriptor, uint8_t* buffer, int buffer_len)
+{
+    file_table_t* ft = myFilesys->getFileTable();
+    file_table_entry_t* ft_entry = (file_table_entry_t *) ft;
+
+    ft_entry += file_descriptor;
+
+    if (!ft_entry->isAllocated)
+    {
+        std::cout << "File is not open" << std::endl;
+        return -1;
+    }
+
+    FILE* fp = myFilesys->getPartitionPtr();
+    uint32_t inode_num = ft_entry->inode_num;
+
+    // Read in the superblock
+    uint8_t superblock_buffer[sizeof(superblock_t)];
+    superblock_t* sb = (superblock_t*) &superblock_buffer;
+
+    // Read Superblock
+    fseek(fp, 0, SEEK_SET);
+    fread(superblock_buffer, sizeof(superblock_t), 1, fp);
+
+
+    // Declare memory for found inode
+    uint8_t inode_buffer[sizeof(inode_t)];
+    inode_t* inode = (inode_t*) &inode_buffer;
+
+    // Find and read the inode
+    fseek(fp, sizeof(superblock_t) + (inode_num * sizeof(inode_t)), SEEK_SET);
+    fread(inode_buffer, sizeof(inode_t), 1, fp);
+
+    inode->size += buffer_len;
+
+    uint8_t* db = (uint8_t *) inode->datablocks;
+
+    int number_of_blocks_needed = (buffer_len / 512) + 1;
+    int num_of_allocated_blocks = find_number_of_allocated_db(db, sizeof(inode->datablocks));
+
+
+
+
+
+    if (num_of_allocated_blocks < number_of_blocks_needed)
+    {
+        int num_to_allocate = number_of_blocks_needed - num_of_allocated_blocks;
+
+        uint8_t* db_ptr_cpy = db;
+
+        for (int i = 0; i < num_to_allocate; i++)
+        {
+            int new_data_block_index = find_first_available_in_bitmap((uint8_t *) &sb->dblock_bmap, sizeof(sb->dblock_bmap));
+            sb->dblock_bmap[new_data_block_index] = 0x11;
+
+            int first_unallocated_index = find_first_unallocated_db_index(db, sizeof(inode->datablocks));
+            db_ptr_cpy += first_unallocated_index;
+            *db_ptr_cpy = new_data_block_index;
+            db_ptr_cpy = db;
+        }
+    }
+
+    uint8_t* buffer_ptr_cpy = buffer;
+    uint8_t* db_ptr_cpy = db;
+
+    for (int i = 0; i < number_of_blocks_needed; i++)
+    {
+        int bytes_to_write = SECTOR_SIZE;
+
+        if (i == number_of_blocks_needed - 1)
+            bytes_to_write = buffer_len % SECTOR_SIZE;
+
+        fseek(fp, sizeof(superblock_t) + (9 * sizeof(inode_block_t)) + (*db_ptr_cpy * sizeof(data_block_t)) + ft_entry->file_offset, SEEK_SET);
+        fwrite(buffer_ptr_cpy, bytes_to_write, 1, fp);
+
+        buffer_ptr_cpy += SECTOR_SIZE;
+        db_ptr_cpy++;
+
+
+    }
+
+
+
+
+
+
+    fseek(fp, sizeof(superblock_t) + (inode_num * sizeof(inode_t)), SEEK_SET);
+    fwrite(inode_buffer, sizeof(inode_t), 1, fp);
+
+    fseek(fp, 0, SEEK_SET);
+    fwrite(sb, sizeof(superblock_t), 1, fp);
+
+    
+    ft_entry->file_offset = ft_entry->file_offset + buffer_len;
+
+    return buffer_len;
 }

@@ -101,9 +101,7 @@
         typedef struct {
             bool isAllocated;
             uint32_t inode_num;
-            uint16_t size;
             uint32_t file_offset;
-            uint8_t datablocks[26];
         } file_table_entry_t;
 
     #endif
