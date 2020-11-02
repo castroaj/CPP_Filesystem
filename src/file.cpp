@@ -195,13 +195,27 @@ int file_open(std::string filepath)
         return -1;
 
     file_table_t* ft = myFilesys->getFileTable();
+    file_table_entry_t* ft_entry = (file_table_entry_t *) ft;
+
+    // Check to see if file is already opened
+    for (int i = 0; i < 32; i++)
+    {
+        if (fin_dir_inode_index == ft_entry->inode_num)
+        {
+            std::cout << "File is already open" << std::endl;
+            return -1;
+        }
+         ft_entry++;
+    }
 
     int next_fd = find_next_available_file_descriptor(ft);
 
-    std::cout << next_fd << std::endl;
-
     if (next_fd == -1)
         return -1;
+
+    uint8_t* db_index_ptr = (uint8_t *)inode->datablocks;
+
+    int db_index = (int) *db_index_ptr;
 
     // Used for indexing
     file_table_entry_t* cur_entry = (file_table_entry_t *) ft;
@@ -212,7 +226,7 @@ int file_open(std::string filepath)
     new_entry.isAllocated = true;
     new_entry.inode_num = fin_dir_inode_index;
     new_entry.size = inode->size;
-    new_entry.file_ptr = fp;
+    new_entry.file_offset = 0;
     memcpy(&new_entry.datablocks, &inode->datablocks, sizeof(inode->datablocks));
 
     // Copy new entry into file table

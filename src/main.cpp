@@ -35,6 +35,23 @@ bool is_number(const std::string& s)
     return !s.empty() && it == s.end();
 }
 
+void print_open_file_table()
+{
+	file_table_t* ft = (file_table_t *) myFilesys->getFileTable();
+
+    file_table_entry_t* ft_entry = (file_table_entry_t *) ft;
+
+    for (int i = 0; i < 32; i++)
+    {
+        if (ft_entry->isAllocated != 255)
+        {
+            std::cout << "Descriptor: " << i << " | IsAllocated: " << ft_entry->isAllocated << " | Inode Number: " << ft_entry->inode_num  << " | Size: " << ft_entry->size << " | File Offset: " <<  ft_entry->file_offset << std::endl;
+        }
+        ft_entry++;
+    }
+    std::cout << "\n" << std::endl;
+}
+
 
 int main(int argc, char* argv[])
 {
@@ -60,6 +77,9 @@ int main(int argc, char* argv[])
 
         switch (inputInt)
         {
+            /**
+             * FORMAT
+             */ 
             case 1:
                 cout << "Enter a filename for the new filesystem: ";
                 std::getline(std::cin, input2);
@@ -70,6 +90,9 @@ int main(int argc, char* argv[])
                     cout << "\n" << input2 << " has been successfully formatted\n\n" << endl;
                 break;
 
+            /**
+             * MOUNT
+             */ 
             case 2:
                 cout << "Enter a filename to mount: ";
                 std::getline(std::cin, input2);
@@ -81,6 +104,9 @@ int main(int argc, char* argv[])
                     cout << "\n" << input2 << " has been successfully mounted\n\n" << endl;
                 break;
 
+            /**
+             * CREATE DIRECTORY
+             */ 
             case 3:
                 if (!myFilesys) 
                 {
@@ -94,9 +120,15 @@ int main(int argc, char* argv[])
                 cout << ret << endl;
                 break;
 
+            /**
+             * REMOVE DIRECTORY
+             */ 
             case 4:
                 break;
 
+            /**
+             * LIST CONTENTS OF DIRECTORY
+             */ 
             case 5:
                 if (!myFilesys) 
                 {
@@ -110,6 +142,9 @@ int main(int argc, char* argv[])
                 cout << ret << endl;
                 break;
 
+            /**
+             * CREATE A FILE
+             */ 
             case 6:
                 if (!myFilesys) 
                 {
@@ -123,9 +158,15 @@ int main(int argc, char* argv[])
                 cout << ret << endl;
                 break;
 
+            /**
+             * REMOVE FILE
+             */ 
             case 7:
                 break;
 
+            /**
+             * OPEN A FILE
+             */ 
             case 8:
                 if (!myFilesys) 
                 {
@@ -133,35 +174,66 @@ int main(int argc, char* argv[])
                     break;
                 }
 
-                cout << "Enter a path to a new file: ";
+                cout << "Enter a path to the file you wish to open: ";
                 std::getline(std::cin, input2);
                 ret = file_open(input2);
 
                 cout << ret << endl;
-                cout << myFilesys << endl;
 
                 break;
 
+            /**
+             * READ FROM FILE
+             */ 
             case 9:
                 break;
 
+            /**
+             * WRITE TO A FILE
+             */ 
             case 10:
                 break;
 
+            /**
+             * SEEK TO A LOCATION IN FILE
+             */ 
             case 11:
                 break;
 
+            /**
+             * CLOSE FILE
+             */ 
             case 12:
                 break;
 
+            /**
+             * RECOVER A DELETED FILE
+             */ 
             case 13:
                 break;
 
+            /**
+             * EXIT PROGRAM
+             */ 
             case 14:
                 cout << "\nExiting the program" << endl;
                 promptUser = false;
                 break;
-                
+
+            /**
+             * PRINT FILE TABLE
+             */ 
+            case 15:
+
+                if (!myFilesys) 
+                {
+                    cout << "\nFilesystem needs to be mounted" << endl;
+                    break;
+                }
+
+		        print_open_file_table();
+		        break;
+
             default:
                 cout << "\nInvalid Input" << endl;
                 promptUser = true;

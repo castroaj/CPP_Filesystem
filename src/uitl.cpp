@@ -235,15 +235,15 @@ uint32_t get_number_of_items_in_directory(FILE* fp, uint8_t* db)
 
 int find_next_available_file_descriptor(file_table_t* ft)
 {
+    file_table_entry_t* cur_entry = (file_table_entry_t *) ft;
+
     for (int i = 0; i < sizeof(ft->entries); i++)
     {
-        file_table_entry_t* cur_entry = &ft->entries[i];
-
         if (!cur_entry->isAllocated)
         {
             return i;
         }
-        ft++;
+        cur_entry++;
     }
     return -1;
 }
