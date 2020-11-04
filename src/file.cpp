@@ -275,12 +275,8 @@ int file_write(int file_descriptor, uint8_t* buffer, int buffer_len)
 
     uint8_t* db = (uint8_t *) inode->datablocks;
 
-    int number_of_blocks_needed = (buffer_len / 512) + 1;
+    int number_of_blocks_needed = ((buffer_len + ft_entry->file_offset) / 512) + 1;
     int num_of_allocated_blocks = find_number_of_allocated_db(db, sizeof(inode->datablocks));
-
-
-
-
 
     if (num_of_allocated_blocks < number_of_blocks_needed)
     {
@@ -292,6 +288,9 @@ int file_write(int file_descriptor, uint8_t* buffer, int buffer_len)
         {
             int new_data_block_index = find_first_available_in_bitmap((uint8_t *) &sb->dblock_bmap, sizeof(sb->dblock_bmap));
             sb->dblock_bmap[new_data_block_index] = 0x11;
+
+            if (new_data_block_index == -1)
+                break;
 
             int first_unallocated_index = find_first_unallocated_db_index(db, sizeof(inode->datablocks));
             db_ptr_cpy += first_unallocated_index;
@@ -315,14 +314,7 @@ int file_write(int file_descriptor, uint8_t* buffer, int buffer_len)
 
         buffer_ptr_cpy += SECTOR_SIZE;
         db_ptr_cpy++;
-
-
     }
-
-
-
-
-
 
     fseek(fp, sizeof(superblock_t) + (inode_num * sizeof(inode_t)), SEEK_SET);
     fwrite(inode_buffer, sizeof(inode_t), 1, fp);
@@ -330,8 +322,43 @@ int file_write(int file_descriptor, uint8_t* buffer, int buffer_len)
     fseek(fp, 0, SEEK_SET);
     fwrite(sb, sizeof(superblock_t), 1, fp);
 
-    
     ft_entry->file_offset = ft_entry->file_offset + buffer_len;
 
     return buffer_len;
 }
+
+int file_seek(int file_descriptor, int offset)
+{
+    file_table_t* ft = myFilesys->getFileTable();
+    file_table_entry_t* ft_entry = (file_table_entry_t *) ft;
+
+    FILE* fp = myFilesys->getPartitionPtr();
+
+    ft_entry += file_descriptor;
+
+    if (!ft_entry->isAllocated)
+    {
+        std::cout << "File is not open" << std::endl;
+        return -1;
+    }
+
+    // Declare memory for found inode
+    uint8_t inode_buffer[sizeof(inode_t)];
+    inode_t* inode = (inode_t*) &inode_buffer;
+
+    // Find and read the inode
+    fseek(fp, sizeof(superblock_t) + (ft_entry->inode_num * sizeof(inode_t)), SEEK_SET);
+    fread(inode_buffer, sizeof(inode_t), 1, fp);
+
+
+    if (inode->size < offset)
+    {
+        std::cout << "Offset is larger then the size of the file" << std::endl;
+        return -1;
+    }
+
+    ft_entry->file_offset = offset;
+
+    return offset;
+}
+

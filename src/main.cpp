@@ -243,6 +243,27 @@ int main(int argc, char* argv[])
              * SEEK TO A LOCATION IN FILE
              */ 
             case 11:
+                if (!check_if_mounted())
+                    break;
+
+                cout << "Enter a file descriptor to seek within: ";
+                std::getline(std::cin, input2);
+
+                if (is_number( input2 ))
+                    fd = std::stoi( input2 );
+                else
+                    break;
+                
+                cout << "Enter an offset to set the file pointer to: ";
+                std::getline(std::cin, input3);
+
+                if (is_number( input3 ))
+                    num_of_bytes = std::stoi( input3 );
+                else
+                    break;
+                
+                ret = file_seek(fd, num_of_bytes);
+
                 break;
 
             /**
