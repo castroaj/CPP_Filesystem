@@ -13,4 +13,6 @@ int file_write(int file_descriptor, uint8_t* buffer, int buffer_len);
 
 int file_seek(int file_descriptor, int offset);
 
+int file_close(int file_descriptor);
+
 #endif

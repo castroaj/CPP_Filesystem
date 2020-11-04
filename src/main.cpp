@@ -264,12 +264,28 @@ int main(int argc, char* argv[])
                 
                 ret = file_seek(fd, num_of_bytes);
 
+                cout << ret << endl;
+
                 break;
 
             /**
              * CLOSE FILE
              */ 
             case 12:
+                if (!check_if_mounted())
+                    break;
+
+                cout << "Enter a file descriptor to close: ";
+                std::getline(std::cin, input2);
+
+                if (is_number( input2 ))
+                    fd = std::stoi( input2 );
+                else
+                    break;
+
+                ret = file_close(fd);
+                cout << ret << endl;
+
                 break;
 
             /**

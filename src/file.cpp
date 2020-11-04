@@ -332,9 +332,9 @@ int file_seek(int file_descriptor, int offset)
     file_table_t* ft = myFilesys->getFileTable();
     file_table_entry_t* ft_entry = (file_table_entry_t *) ft;
 
-    FILE* fp = myFilesys->getPartitionPtr();
-
     ft_entry += file_descriptor;
+
+    FILE* fp = myFilesys->getPartitionPtr();
 
     if (!ft_entry->isAllocated)
     {
@@ -362,3 +362,21 @@ int file_seek(int file_descriptor, int offset)
     return offset;
 }
 
+
+int file_close(int file_descriptor)
+{
+    file_table_t* ft = myFilesys->getFileTable();
+    file_table_entry_t* ft_entry = (file_table_entry_t *) ft;
+
+    ft_entry += file_descriptor;
+
+    if (!ft_entry->isAllocated)
+    {
+        std::cout << "File is not open" << std::endl;
+        return -1;
+    }
+
+    memset(ft_entry, 255, sizeof(file_table_entry_t));
+
+    return 0;
+}
