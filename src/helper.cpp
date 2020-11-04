@@ -25,6 +25,20 @@ bool make_vector_of_directories(std::string filepath, std::vector<std::string>* 
     return true;
 }
 
+void make_vector_of_allocated_data_blocks(uint8_t* db_bm, int db_len, std::vector<uint8_t>* dbs)
+{
+    uint8_t* db_bm_cpy = db_bm;
+
+    for (int i = 0; i < db_len; i++)
+    {
+        if (*db_bm_cpy != 0xff)
+        {
+            dbs->push_back(*db_bm_cpy);
+        }
+        db_bm_cpy++;
+    }
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 int get_last_directory_inode_index(std::vector<std::string>* dirs, FILE* fp, int inode_index, bool go_to_len_zero)
@@ -66,8 +80,6 @@ int get_last_directory_inode_index(std::vector<std::string>* dirs, FILE* fp, int
         return get_last_directory_inode_index(dirs, fp, inode_num, go_to_len_zero);
 }
 
-
-
 uint32_t traverse_directory_for_filename(FILE* fp, uint8_t* db, char* dirToLookFor)
 {
     for (unsigned int i = 0; i < 26; i++)
@@ -99,6 +111,68 @@ uint32_t traverse_directory_for_filename(FILE* fp, uint8_t* db, char* dirToLookF
         db++;
     }
     return 255;
+}
+
+int traverse_to_remove_dir_entry_with_inode(FILE* fp, uint8_t* db, int inode_to_remove)
+{
+    for (unsigned int i = 0; i < 26; i++)
+    {
+        if (*db != 0xff)
+        {
+            uint8_t datablock[SECTOR_SIZE];
+            dir_entry_t* datablock_entry = (dir_entry_t*) &datablock;
+
+            fseek(fp, sizeof(superblock_t) + (9 * sizeof(inode_block_t)) + (*db * sizeof(data_block_t)), SEEK_SET);
+            fread(datablock, SECTOR_SIZE, 1, fp);
+
+            for (int j = 0; j < SECTOR_SIZE / sizeof(dir_entry_t); j++)
+            {   
+                uint32_t cur_inode = datablock_entry->inode_num;
+
+                if (cur_inode == inode_to_remove)
+                {
+                    memset(datablock_entry, 0x00, sizeof(dir_entry_t));
+
+                    fseek(fp, sizeof(superblock_t) + (9 * sizeof(inode_block_t)) + (*db * sizeof(data_block_t) + (j * sizeof(dir_entry_t))), SEEK_SET);
+                    fwrite(datablock_entry, sizeof(dir_entry_t), 1, fp);
+
+                    return 0;
+                }
+                datablock_entry++;
+            }
+        }
+        db++;
+    }
+    return -1;
+}
+
+
+int traverse_to_find_first_open_entry(FILE* fp, uint8_t* db)
+{
+    for (unsigned int i = 0; i < 26; i++)
+    {
+        if (*db != 0xff)
+        {
+            uint8_t datablock[SECTOR_SIZE];
+            dir_entry_t* datablock_entry = (dir_entry_t*) &datablock;
+
+            fseek(fp, sizeof(superblock_t) + (9 * sizeof(inode_block_t)) + (*db * sizeof(data_block_t)), SEEK_SET);
+            fread(datablock, SECTOR_SIZE, 1, fp);
+
+            for (int j = 0; j < SECTOR_SIZE / sizeof(dir_entry_t); j++)
+            {   
+                uint32_t cur_inode = datablock_entry->inode_num;
+
+                if (cur_inode == 0x00)
+                {
+                    return j;
+                }
+                datablock_entry++;
+            }
+        }
+        db++;
+    }
+    return -1;
 }
 
 

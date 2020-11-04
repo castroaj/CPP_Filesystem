@@ -148,6 +148,13 @@ int main(int argc, char* argv[])
              * REMOVE DIRECTORY
              */ 
             case 4:
+                if (!check_if_mounted())
+                    break;
+
+                cout << "Enter path to a directory to remove: ";
+                std::getline(std::cin, input2);
+                ret = dir_unlink(input2);
+                cout << ret << endl;
                 break;
 
             /**

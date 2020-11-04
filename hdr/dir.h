@@ -48,4 +48,7 @@ int dir_size(std::string filepath);
  ***********************************************************************/
 int dir_read(std::string filepath);
 
+
+int dir_unlink(std::string filepath);
+
 #endif

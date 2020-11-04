@@ -12,12 +12,15 @@
 #ifndef HELPER_H
 #define HELPER_H
 
-// Filename parser
+// Vector creators
 bool make_vector_of_directories(std::string filepath, std::vector<std::string>* dirs);
+void make_vector_of_allocated_data_blocks(uint8_t* db_bm, int db_len, std::vector<uint8_t>* dbs);
 
 // Directory Traversal
 int get_last_directory_inode_index(std::vector<std::string>* dirs, FILE* fp, int inode_index, bool go_to_len_zero);
 uint32_t traverse_directory_for_filename(FILE* fp, uint8_t* db, char* dirToLookFor);
+int traverse_to_remove_dir_entry_with_inode(FILE* fp, uint8_t* db, int inode_to_remove);
+int traverse_to_find_first_open_entry(FILE* fp, uint8_t* db);
 
 // Bitmap parsers
 int find_first_available_in_bitmap(uint8_t* bitmap, int len);
