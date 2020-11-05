@@ -58,6 +58,18 @@ int write_helper(std::string input3, int fd, int num_of_bytes)
 }
 
 
+int read_helper(std::string input3, int fd, int num_of_bytes)
+{
+    uint8_t buffer[num_of_bytes];
+    int ret = file_read(fd, buffer, num_of_bytes);
+
+    if (ret != -1)
+        return write_file_to_stu(input3, buffer, ret);
+    else
+        return -1;    
+}
+
+
 void print_open_file_table()
 {
 	file_table_t* ft = (file_table_t *) myFilesys->getFileTable();
@@ -211,7 +223,32 @@ int main(int argc, char* argv[])
              * READ FROM FILE
              */ 
             case 9:
+                if (!check_if_mounted())
+                    break;
 
+                cout << "Enter a file descriptor to read from: ";
+                std::getline(std::cin, input2);
+
+                // Validate that the input is a number 
+                if (is_number(input2))
+                    fd = std::stoi( input2 ); 
+                else
+                    break;
+
+                cout << "Enter the name of the new file on stu: ";
+                std::getline(std::cin, input3);
+
+                cout << "Enter the number of bytes to read: ";
+                std:: getline(std::cin, input4);
+
+                // Validate that the input is a number
+                if (is_number(input4))
+                    num_of_bytes = std::stoi( input4 );
+                else
+                    break;
+
+                ret = read_helper(input3, fd, num_of_bytes);
+                cout << ret << endl;
                 break;
 
             /**

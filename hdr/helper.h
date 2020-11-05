@@ -21,6 +21,7 @@ int get_last_directory_inode_index(std::vector<std::string>* dirs, FILE* fp, int
 uint32_t traverse_directory_for_filename(FILE* fp, uint8_t* db, char* dirToLookFor);
 int traverse_to_remove_dir_entry_with_inode(FILE* fp, uint8_t* db, int inode_to_remove);
 int traverse_to_find_first_open_entry(FILE* fp, uint8_t* db);
+int traverse_to_fill_buffer_with_file_content(uint8_t* db, FILE* fp, uint8_t* buffer, int bytes_to_read, int file_size, int file_offset);
 
 // Bitmap parsers
 int find_first_available_in_bitmap(uint8_t* bitmap, int len);
@@ -39,5 +40,6 @@ int find_next_available_file_descriptor(file_table_t* ft);
 
 // Read/Write Files
 int read_file_from_stu(std::string filename, uint8_t* buffer, int num_of_bytes);
+int write_file_to_stu(std::string filename, uint8_t* buffer, int num_of_bytes);
 
 #endif

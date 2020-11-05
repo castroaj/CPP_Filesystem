@@ -99,7 +99,7 @@ int file_create(std::string filepath)
 
     // Calculate offsets
     int bitmap_index = (num_of_dir + 1) / 25;
-    int new_entry_index = (((inode->size - 20) / 20) % 25);
+    int new_entry_index = traverse_to_find_first_open_entry(fp, (uint8_t *) inode->datablocks);
 
     // Get the data block index for the new entry
     db_bm += bitmap_index;
@@ -235,7 +235,35 @@ int file_open(std::string filepath)
 
 int file_read(int file_descriptor, uint8_t* buffer, int bytes_to_read)
 {
-    return -1;
+    file_table_t* ft = myFilesys->getFileTable();
+    file_table_entry_t* ft_entry = (file_table_entry_t *) ft;
+
+    ft_entry += file_descriptor;
+
+    if (!ft_entry->isAllocated)
+    {
+        std::cout << "File is not open" << std::endl;
+        return -1;
+    }
+
+    FILE* fp = myFilesys->getPartitionPtr();
+    uint32_t inode_num = ft_entry->inode_num;
+
+    // Declare memory for found inode
+    uint8_t inode_buffer[sizeof(inode_t)];
+    inode_t* inode = (inode_t*) &inode_buffer;
+
+    // Find and read the inode
+    fseek(fp, sizeof(superblock_t) + (inode_num * sizeof(inode_t)), SEEK_SET);
+    fread(inode_buffer, sizeof(inode_t), 1, fp);
+
+    uint8_t* db = (uint8_t *) inode->datablocks;
+
+    int bytes_read = traverse_to_fill_buffer_with_file_content(db, fp, buffer, bytes_to_read, inode->size, ft_entry->file_offset);
+
+    ft_entry->file_offset = ft_entry->file_offset + bytes_read;
+
+    return bytes_read;
 }
 
 int file_write(int file_descriptor, uint8_t* buffer, int buffer_len)

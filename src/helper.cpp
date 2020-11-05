@@ -176,6 +176,56 @@ int traverse_to_find_first_open_entry(FILE* fp, uint8_t* db)
 }
 
 
+int traverse_to_fill_buffer_with_file_content(uint8_t* db, FILE* fp, uint8_t* buffer, int bytes_to_read, int file_size, int file_offset)
+{
+    int file_size_cpy = file_size - file_offset;
+    int bytes_to_read_cpy = bytes_to_read;
+
+    file_size = file_size - file_offset;
+
+    int starting_block_index = file_offset / SECTOR_SIZE;
+    int starting_byte_index = file_offset % SECTOR_SIZE;
+
+    db = db + starting_block_index;
+
+    for (unsigned int i = starting_block_index; i < 26; i++)
+    {
+        if (*db != 0xff)
+        {
+            uint8_t datablock[SECTOR_SIZE];
+
+            fseek(fp, sizeof(superblock_t) + (9 * sizeof(inode_block_t)) + (*db * sizeof(data_block_t)) + starting_byte_index, SEEK_SET);
+            fread(datablock, SECTOR_SIZE - starting_byte_index, 1, fp);
+
+            if (bytes_to_read > SECTOR_SIZE - starting_byte_index && file_size > SECTOR_SIZE - starting_byte_index)
+            {
+                memcpy(buffer, datablock, SECTOR_SIZE - starting_byte_index);
+                starting_byte_index = 0;
+            }
+            else
+            {
+                if (bytes_to_read > file_size)
+                {
+                    memcpy(buffer, datablock, file_size);
+                    return file_size_cpy;
+                }
+                else
+                {
+                    memcpy(buffer, datablock, bytes_to_read);
+                    return bytes_to_read_cpy;
+                }
+
+            }
+            bytes_to_read = bytes_to_read - SECTOR_SIZE;
+            file_size = file_size - SECTOR_SIZE;
+            buffer = buffer + SECTOR_SIZE;
+        }
+        db++;
+    }
+    return -1;
+}
+
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
@@ -349,3 +399,9 @@ int read_file_from_stu(std::string filename, uint8_t* buffer, int num_of_bytes)
     return infile.gcount();
 }
 
+int write_file_to_stu(std::string filename, uint8_t* buffer, int num_of_bytes)
+{
+    std::ofstream outfile(filename, std::ios::out | std::ios::binary);
+    outfile.write((char *) buffer, num_of_bytes);
+    return num_of_bytes;
+}

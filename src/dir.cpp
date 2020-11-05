@@ -100,10 +100,7 @@ int dir_create(std::string filepath)
 
     // Calculate offsets
     int bitmap_index = (num_of_dir + 1) / 25;
-    //int new_entry_index = (((inode->size - 20) / 20) % 25);
     int new_entry_index = traverse_to_find_first_open_entry(fp, (uint8_t *) inode->datablocks);
-
-
 
     // Get the data block index for the new entry
     db_bm += bitmap_index;
@@ -367,7 +364,7 @@ int dir_unlink(std::string filepath)
     // Make changes to inode
     ///////////////////////////////////////////////////////////////////////
 
-    memset(inode, 0x00, sizeof(inode_t));
+    std::memset(inode, 0x00, sizeof(inode_t));
 
     // Write updated directory inode to file
     fseek(fp, sizeof(superblock_t) + (fin_dir_inode_index * sizeof(inode_t)), SEEK_SET);
