@@ -192,7 +192,7 @@ int traverse_to_fill_buffer_with_file_content(uint8_t* db, FILE* fp, uint8_t* bu
     {
         if (*db != 0xff)
         {
-            uint8_t datablock[SECTOR_SIZE];
+            uint8_t datablock[SECTOR_SIZE - starting_byte_index];
 
             fseek(fp, sizeof(superblock_t) + (9 * sizeof(inode_block_t)) + (*db * sizeof(data_block_t)) + starting_byte_index, SEEK_SET);
             fread(datablock, SECTOR_SIZE - starting_byte_index, 1, fp);
@@ -200,6 +200,7 @@ int traverse_to_fill_buffer_with_file_content(uint8_t* db, FILE* fp, uint8_t* bu
             if (bytes_to_read > SECTOR_SIZE - starting_byte_index && file_size > SECTOR_SIZE - starting_byte_index)
             {
                 memcpy(buffer, datablock, SECTOR_SIZE - starting_byte_index);
+                buffer = buffer + (SECTOR_SIZE - starting_byte_index);
                 starting_byte_index = 0;
             }
             else
@@ -218,7 +219,6 @@ int traverse_to_fill_buffer_with_file_content(uint8_t* db, FILE* fp, uint8_t* bu
             }
             bytes_to_read = bytes_to_read - SECTOR_SIZE;
             file_size = file_size - SECTOR_SIZE;
-            buffer = buffer + SECTOR_SIZE;
         }
         db++;
     }
