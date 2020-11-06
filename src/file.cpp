@@ -21,7 +21,7 @@ int file_create(std::string filepath)
     FILE* fp = myFilesys->getPartitionPtr();
 
     // Find the inode of the last directory in the given filepath
-    int fin_dir_inode_index = get_last_directory_inode_index(&dirs, fp, 0, go_to_len_zero);
+    int fin_dir_inode_index = get_last_directory_inode_index(&dirs, fp, 0, go_to_len_zero, false);
 
     if (fin_dir_inode_index == -1)
         return -1;
@@ -139,6 +139,12 @@ int file_create(std::string filepath)
     std::memset(data_block_arr, 255, sizeof(new_inode.datablocks));
     *data_block_arr = new_db_index;
 
+    // Zero out newly allocated data block
+    uint8_t zeros[SECTOR_SIZE];
+    memset(zeros, 0, SECTOR_SIZE);
+    fseek(fp, sizeof(superblock_t) + (9 * sizeof(inode_block_t)) + (new_db_index * sizeof(data_block_t)), SEEK_SET);
+    fwrite(zeros, SECTOR_SIZE, 1, fp);
+
     ////////////////////////////////////////////////////////////////////////
     // Write Changes to file
     ////////////////////////////////////////////////////////////////////////
@@ -178,7 +184,7 @@ int file_open(std::string filepath)
     FILE* fp = myFilesys->getPartitionPtr();
 
     // Find the inode of the last directory in the given filepath
-    int fin_dir_inode_index = get_last_directory_inode_index(&dirs, fp, 0, go_to_len_zero);
+    int fin_dir_inode_index = get_last_directory_inode_index(&dirs, fp, 0, go_to_len_zero, false);
 
     if (fin_dir_inode_index == -1)
         return -1;
@@ -279,6 +285,12 @@ int file_write(int file_descriptor, uint8_t* buffer, int buffer_len)
         return -1;
     }
 
+    if (buffer_len + ft_entry->file_offset > (SECTOR_SIZE * 26))
+    {
+        return -1;
+    }
+
+
     FILE* fp = myFilesys->getPartitionPtr();
     uint32_t inode_num = ft_entry->inode_num;
 
@@ -298,8 +310,6 @@ int file_write(int file_descriptor, uint8_t* buffer, int buffer_len)
     // Find and read the inode
     fseek(fp, sizeof(superblock_t) + (inode_num * sizeof(inode_t)), SEEK_SET);
     fread(inode_buffer, sizeof(inode_t), 1, fp);
-
-    inode->size += buffer_len;
 
     uint8_t* db = (uint8_t *) inode->datablocks;
 
@@ -321,11 +331,21 @@ int file_write(int file_descriptor, uint8_t* buffer, int buffer_len)
                 break;
 
             int first_unallocated_index = find_first_unallocated_db_index(db, sizeof(inode->datablocks));
+
+            if (new_data_block_index == -1)
+            {
+                number_of_blocks_needed = i;
+                break;
+            }
+
             db_ptr_cpy += first_unallocated_index;
             *db_ptr_cpy = new_data_block_index;
             db_ptr_cpy = db;
         }
     }
+
+    inode->size = buffer_len + ft_entry->file_offset;
+
 
     uint8_t* buffer_ptr_cpy = buffer;
     uint8_t* db_ptr_cpy = db;
@@ -335,7 +355,9 @@ int file_write(int file_descriptor, uint8_t* buffer, int buffer_len)
         int bytes_to_write = SECTOR_SIZE;
 
         if (i == number_of_blocks_needed - 1)
+        {
             bytes_to_write = buffer_len % SECTOR_SIZE;
+        }
 
         fseek(fp, sizeof(superblock_t) + (9 * sizeof(inode_block_t)) + (*db_ptr_cpy * sizeof(data_block_t)) + ft_entry->file_offset, SEEK_SET);
         fwrite(buffer_ptr_cpy, bytes_to_write, 1, fp);
@@ -408,3 +430,268 @@ int file_close(int file_descriptor)
 
     return 0;
 }
+
+int file_unlink(std::string filepath)
+{
+    // Copy the filepath to new string
+    std::string fpcpy = filepath;
+
+    // Check to see if filepath is valid
+    if (filepath.size() == 0 || filepath.at(0) != '/' || filepath.compare("/") == 0)
+        return -1;
+    
+    // Create a vector of all the directories that need to be visited
+    std::vector<std::string> dirs;
+    make_vector_of_directories(filepath, &dirs);
+
+    std::vector<std::string> dirs2;
+    make_vector_of_directories(filepath, &dirs2);
+
+    FILE* fp = myFilesys->getPartitionPtr();
+
+    // Find the inode of the last directory in the given filepath
+    int fin_dir_inode_index = get_last_directory_inode_index(&dirs, fp, 0, true, false);
+    int parent_inode_index = get_last_directory_inode_index(&dirs2, fp, 0, false, false);
+
+    if (fin_dir_inode_index == -1)
+        return -1;
+
+    //////////////////////////////////////////////////////////////////////
+    // Declare memory for each section of current node
+    //////////////////////////////////////////////////////////////////////
+
+    // Read in the superblock
+    uint8_t superblock_buffer[sizeof(superblock_t)];
+    superblock_t* sb = (superblock_t*) &superblock_buffer;
+
+    // Declare memory for found inode
+    uint8_t inode_buffer[sizeof(inode_t)];
+    inode_t* inode = (inode_t*) &inode_buffer;
+
+    // Declare memory for found inode
+    uint8_t parent_inode_buffer[sizeof(inode_t)];
+    inode_t* parent_inode = (inode_t*) &parent_inode_buffer;
+
+    /////////////////////////////////////////////////////////////////////
+    // Read data into each of the above buffers
+    /////////////////////////////////////////////////////////////////////
+
+    // Read Superblock
+    fseek(fp, 0, SEEK_SET);
+    fread(superblock_buffer, sizeof(superblock_t), 1, fp);
+
+    // Find and read the inode
+    fseek(fp, sizeof(superblock_t) + (fin_dir_inode_index * sizeof(inode_t)), SEEK_SET);
+    fread(inode_buffer, sizeof(inode_t), 1, fp);
+
+    // Find and read the parent inode
+    fseek(fp, sizeof(superblock_t) + (parent_inode_index * sizeof(inode_t)), SEEK_SET);
+    fread(parent_inode_buffer, sizeof(inode_t), 1, fp);
+
+    ///////////////////////////////////////////////////////////////////////
+    // Check to see if inode is a file
+    ///////////////////////////////////////////////////////////////////////
+
+    if (inode->type != 0x2222)
+        return -1;
+
+    ///////////////////////////////////////////////////////////////////////
+    // Make changes to superblock
+    ///////////////////////////////////////////////////////////////////////
+
+    uint8_t* inode_bmap = (uint8_t *) &sb->inode_bmap;
+    
+    inode_bmap += fin_dir_inode_index;
+    *inode_bmap = 0x00;
+
+    std::vector<uint8_t> cur_data_blocks;
+
+    // Get the datablock bitmap from the inode
+    uint8_t* db_bm = (uint8_t *) &inode->datablocks;
+
+    make_vector_of_allocated_data_blocks(db_bm, sizeof(inode->datablocks), &cur_data_blocks);
+
+
+    uint8_t* sb_db_bmap = (uint8_t *) &sb->dblock_bmap; 
+    uint8_t* sb_db_bmap_cpy = sb_db_bmap;
+
+
+    for (int i = 0; i < cur_data_blocks.size(); i++)
+    {
+        sb_db_bmap_cpy += cur_data_blocks.at(i);
+        *sb_db_bmap_cpy = 0x00;
+        sb_db_bmap_cpy = sb_db_bmap;
+    }
+
+    // Write superblock to file
+    fseek(fp, 0, SEEK_SET);
+    fwrite((void *)sb, sizeof(superblock_t), 1, fp);
+
+    ///////////////////////////////////////////////////////////////////////
+    // Make changes to inode
+    ///////////////////////////////////////////////////////////////////////
+
+    //std::memset(inode, 0x00, sizeof(inode_t));
+
+    inode->state = 0x0000;
+
+    // Write updated directory inode to file
+    fseek(fp, sizeof(superblock_t) + (fin_dir_inode_index * sizeof(inode_t)), SEEK_SET);
+    fwrite((void*) inode, sizeof(inode_t), 1, fp);
+
+    ///////////////////////////////////////////////////////////////////////
+    // Make changes to parent inode
+    ///////////////////////////////////////////////////////////////////////
+
+    parent_inode->size = parent_inode->size - sizeof(dir_entry_t);
+
+    uint8_t* parent_db_bm = (uint8_t *) &parent_inode->datablocks;
+
+    // Write updated directory inode to file
+    fseek(fp, sizeof(superblock_t) + (parent_inode_index * sizeof(inode_t)), SEEK_SET);
+    fwrite((void*) parent_inode, sizeof(inode_t), 1, fp);
+
+    return traverse_to_remove_dir_entry_with_inode(fp, parent_db_bm, fin_dir_inode_index, false);
+}
+
+int file_ununlink(std::string filepath)
+{
+        // Copy the filepath to new string
+    std::string fpcpy = filepath;
+
+    // Check to see if filepath is valid
+    if (filepath.size() == 0 || filepath.at(0) != '/' || filepath.compare("/") == 0)
+        return -1;
+    
+    // Create a vector of all the directories that need to be visited
+    std::vector<std::string> dirs;
+    make_vector_of_directories(filepath, &dirs);
+
+    std::vector<std::string> dirs2;
+    make_vector_of_directories(filepath, &dirs2);
+
+    FILE* fp = myFilesys->getPartitionPtr();
+
+    // Find the inode of the last directory in the given filepath
+    int fin_dir_inode_index = get_last_directory_inode_index(&dirs, fp, 0, true, true);
+    int parent_inode_index = get_last_directory_inode_index(&dirs2, fp, 0, false, false);
+
+    if (fin_dir_inode_index == -1)
+        return -1;
+
+    //////////////////////////////////////////////////////////////////////
+    // Declare memory for each section of current node
+    //////////////////////////////////////////////////////////////////////
+
+    // Read in the superblock
+    uint8_t superblock_buffer[sizeof(superblock_t)];
+    superblock_t* sb = (superblock_t*) &superblock_buffer;
+
+    // Declare memory for found inode
+    uint8_t inode_buffer[sizeof(inode_t)];
+    inode_t* inode = (inode_t*) &inode_buffer;
+
+    // Declare memory for found inode
+    uint8_t parent_inode_buffer[sizeof(inode_t)];
+    inode_t* parent_inode = (inode_t*) &parent_inode_buffer;
+
+    /////////////////////////////////////////////////////////////////////
+    // Read data into each of the above buffers
+    /////////////////////////////////////////////////////////////////////
+
+    // Read Superblock
+    fseek(fp, 0, SEEK_SET);
+    fread(superblock_buffer, sizeof(superblock_t), 1, fp);
+
+    // Find and read the inode
+    fseek(fp, sizeof(superblock_t) + (fin_dir_inode_index * sizeof(inode_t)), SEEK_SET);
+    fread(inode_buffer, sizeof(inode_t), 1, fp);
+
+    // Find and read the parent inode
+    fseek(fp, sizeof(superblock_t) + (parent_inode_index * sizeof(inode_t)), SEEK_SET);
+    fread(parent_inode_buffer, sizeof(inode_t), 1, fp);
+
+    ///////////////////////////////////////////////////////////////////////
+    // Check to see if inode is a file
+    ///////////////////////////////////////////////////////////////////////
+
+    if (inode->state != 0x0000)
+        return -1;
+
+    if (inode->type != 0x2222)
+        return -1;
+    
+
+    std::vector<uint8_t> cur_data_blocks;
+
+    // Get the datablock bitmap from the inode
+    uint8_t* db_bm = (uint8_t *) &inode->datablocks;
+
+    make_vector_of_allocated_data_blocks(db_bm, sizeof(inode->datablocks), &cur_data_blocks);
+
+    uint8_t* sb_db_bmap = (uint8_t *) &sb->dblock_bmap; 
+    uint8_t* sb_db_bmap_cpy = sb_db_bmap;
+
+    bool corrupted = false;
+
+    for (int i = 0; i < cur_data_blocks.size(); i++)
+    {
+        sb_db_bmap_cpy += cur_data_blocks.at(i);
+        
+        if (*sb_db_bmap_cpy != 0x00)
+        {
+            corrupted = true;
+            break;
+        }
+        sb_db_bmap_cpy = sb_db_bmap;
+    }
+
+    // Reset copy ptr
+    sb_db_bmap_cpy = sb_db_bmap;
+
+    if (!corrupted)
+    {
+        for (int i = 0; i < cur_data_blocks.size(); i++)
+        {
+            sb_db_bmap_cpy += cur_data_blocks.at(i);
+            *sb_db_bmap_cpy = 0x11;
+            sb_db_bmap_cpy = sb_db_bmap;
+        }
+    }
+    else
+    {
+        return -1;
+    }
+    
+    uint8_t* inode_bmap = (uint8_t *) &sb->inode_bmap;
+    
+    inode_bmap += fin_dir_inode_index;
+    *inode_bmap = 0x11;
+
+    inode->state = 0x1111;
+
+    parent_inode->size = parent_inode->size + 20;
+
+    // Write superblock to file
+    fseek(fp, 0, SEEK_SET);
+    fwrite((void *)sb, sizeof(superblock_t), 1, fp);
+
+    // Write updated directory inode to file
+    fseek(fp, sizeof(superblock_t) + (fin_dir_inode_index * sizeof(inode_t)), SEEK_SET);
+    fwrite((void*) inode, sizeof(inode_t), 1, fp);
+
+    // Write updated directory inode to file
+    fseek(fp, sizeof(superblock_t) + (parent_inode_index * sizeof(inode_t)), SEEK_SET);
+    fwrite((void*) parent_inode, sizeof(inode_t), 1, fp);
+
+    std::vector<std::string> dirs3;
+    make_vector_of_directories(filepath, &dirs3);
+
+    std::string fn = dirs3.at(dirs3.size() - 1);
+
+    traverse_directory_to_recover_file(fp, (uint8_t *) &parent_inode->datablocks, fn.c_str());
+
+
+    return 0;
+}
+

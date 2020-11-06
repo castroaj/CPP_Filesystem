@@ -21,7 +21,7 @@ int dir_create(std::string filepath)
     FILE* fp = myFilesys->getPartitionPtr();
 
     // Find the inode of the last directory in the given filepath
-    int fin_dir_inode_index = get_last_directory_inode_index(&dirs, fp, 0, go_to_len_zero);
+    int fin_dir_inode_index = get_last_directory_inode_index(&dirs, fp, 0, go_to_len_zero, false);
 
     if (fin_dir_inode_index == -1)
         return -1;
@@ -140,6 +140,12 @@ int dir_create(std::string filepath)
     std::memset(data_block_arr, 255, sizeof(new_inode.datablocks));
     *data_block_arr = new_db_index;
 
+    // Zero out newly allocated data block
+    uint8_t zeros[SECTOR_SIZE];
+    memset(zeros, 0, SECTOR_SIZE);
+    fseek(fp, sizeof(superblock_t) + (9 * sizeof(inode_block_t)) + (new_db_index * sizeof(data_block_t)), SEEK_SET);
+    fwrite(zeros, SECTOR_SIZE, 1, fp);
+
     ////////////////////////////////////////////////////////////////////////
     // Write Changes to file
     ////////////////////////////////////////////////////////////////////////
@@ -184,7 +190,7 @@ int dir_size(std::string filepath)
     FILE* fp = myFilesys->getPartitionPtr();
 
     // Find the inode of the last directory in the given filepath
-    int fin_dir_inode_index = get_last_directory_inode_index(&dirs, fp, 0, go_to_len_zero);
+    int fin_dir_inode_index = get_last_directory_inode_index(&dirs, fp, 0, go_to_len_zero, false);
 
     if (fin_dir_inode_index == -1 || (fin_dir_inode_index == 0 && filepath.compare("/") != 0))
         return -1;
@@ -223,7 +229,7 @@ int dir_read(std::string filepath)
     FILE* fp = myFilesys->getPartitionPtr();
 
     // Find the inode of the last directory in the given filepath
-    int fin_dir_inode_index = get_last_directory_inode_index(&dirs, fp, 0, go_to_len_zero);
+    int fin_dir_inode_index = get_last_directory_inode_index(&dirs, fp, 0, go_to_len_zero, false);
 
     if (fin_dir_inode_index == -1 || (fin_dir_inode_index == 0 && filepath.compare("/") != 0))
         return -1;
@@ -259,7 +265,7 @@ int dir_read(std::string filepath)
 
 int dir_unlink(std::string filepath)
 {
-        // Copy the filepath to new string
+    // Copy the filepath to new string
     std::string fpcpy = filepath;
 
     // Check to see if filepath is valid
@@ -276,11 +282,8 @@ int dir_unlink(std::string filepath)
     FILE* fp = myFilesys->getPartitionPtr();
 
     // Find the inode of the last directory in the given filepath
-    int fin_dir_inode_index = get_last_directory_inode_index(&dirs, fp, 0, true);
-    int parent_inode_index = get_last_directory_inode_index(&dirs2, fp, 0, false);
-
-    std::cout << "Dir inode: " << fin_dir_inode_index << "\nParent inode: " << parent_inode_index << std::endl;
-
+    int fin_dir_inode_index = get_last_directory_inode_index(&dirs, fp, 0, true, false);
+    int parent_inode_index = get_last_directory_inode_index(&dirs2, fp, 0, false, false);
 
     if (fin_dir_inode_index == -1)
         return -1;
@@ -318,7 +321,7 @@ int dir_unlink(std::string filepath)
     fread(parent_inode_buffer, sizeof(inode_t), 1, fp);
 
     ///////////////////////////////////////////////////////////////////////
-    // Check to see if inode is directory and that is does not already exist
+    // Check to see if inode is directory
     ///////////////////////////////////////////////////////////////////////
 
     if (inode->type != 0x3333)
@@ -335,7 +338,6 @@ int dir_unlink(std::string filepath)
     
     inode_bmap += fin_dir_inode_index;
     *inode_bmap = 0x00;
-
 
     std::vector<uint8_t> cur_data_blocks;
 
@@ -364,7 +366,9 @@ int dir_unlink(std::string filepath)
     // Make changes to inode
     ///////////////////////////////////////////////////////////////////////
 
-    std::memset(inode, 0x00, sizeof(inode_t));
+    //std::memset(inode, 0x00, sizeof(inode_t));
+
+    inode->state = 0x0000;
 
     // Write updated directory inode to file
     fseek(fp, sizeof(superblock_t) + (fin_dir_inode_index * sizeof(inode_t)), SEEK_SET);
@@ -382,6 +386,6 @@ int dir_unlink(std::string filepath)
     fseek(fp, sizeof(superblock_t) + (parent_inode_index * sizeof(inode_t)), SEEK_SET);
     fwrite((void*) parent_inode, sizeof(inode_t), 1, fp);
 
-    return traverse_to_remove_dir_entry_with_inode(fp, parent_db_bm, fin_dir_inode_index);
+    return traverse_to_remove_dir_entry_with_inode(fp, parent_db_bm, fin_dir_inode_index, true);
 
 }

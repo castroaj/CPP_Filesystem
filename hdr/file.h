@@ -15,4 +15,8 @@ int file_seek(int file_descriptor, int offset);
 
 int file_close(int file_descriptor);
 
+int file_unlink(std::string filepath);
+
+int file_ununlink(std::string filepath);
+
 #endif

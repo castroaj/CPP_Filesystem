@@ -199,6 +199,13 @@ int main(int argc, char* argv[])
              * REMOVE FILE
              */ 
             case 7:
+                if (!check_if_mounted())
+                    break;
+
+                cout << "Enter path to a file to remove: ";
+                std::getline(std::cin, input2);
+                ret = file_unlink(input2);
+                cout << ret << endl;
                 break;
 
             /**
@@ -229,23 +236,38 @@ int main(int argc, char* argv[])
                 cout << "Enter a file descriptor to read from: ";
                 std::getline(std::cin, input2);
 
-                // Validate that the input is a number 
+                // Validate that the input is a number
                 if (is_number(input2))
-                    fd = std::stoi( input2 ); 
-                else
-                    break;
+                {
+                    try 
+                    {
+                        fd = std::stoi( input2 );
+                    }
+                    catch (std::out_of_range &e)
+                    {
+                        break;
+                    }
+                }
 
                 cout << "Enter the name of the new file on stu: ";
                 std::getline(std::cin, input3);
 
                 cout << "Enter the number of bytes to read: ";
-                std:: getline(std::cin, input4);
+                std::getline(std::cin, input4);
 
                 // Validate that the input is a number
                 if (is_number(input4))
-                    num_of_bytes = std::stoi( input4 );
-                else
-                    break;
+                {
+                    try 
+                    {
+                        num_of_bytes = std::stoi( input4 );
+                    }
+                    catch (std::out_of_range &e)
+                    {
+                        cout << "Number of bytes is too large" << endl;
+                        break;
+                    }
+                }
 
                 ret = read_helper(input3, fd, num_of_bytes);
                 cout << ret << endl;
@@ -261,11 +283,19 @@ int main(int argc, char* argv[])
                 cout << "Enter a file descriptor to write to: ";
                 std::getline(std::cin, input2);
 
-                // Validate that the input is a number 
+                // Validate that the input is a number
                 if (is_number(input2))
-                    fd = std::stoi( input2 ); 
-                else
-                    break;
+                {
+                    try 
+                    {
+                        fd = std::stoi( input2 );
+                    }
+                    catch (std::out_of_range &e)
+                    {
+                        cout << "Fd is too large" << endl;
+                        break;
+                    }
+                }
 
                 cout << "Enter the name of a file on stu: ";
                 std::getline(std::cin, input3);
@@ -275,9 +305,17 @@ int main(int argc, char* argv[])
 
                 // Validate that the input is a number
                 if (is_number(input4))
-                    num_of_bytes = std::stoi( input4 );
-                else
-                    break;
+                {
+                    try 
+                    {
+                        num_of_bytes = std::stoi( input4 );
+                    }
+                    catch (std::out_of_range &e)
+                    {
+                        cout << "Number of bytes is too large" << endl;
+                        break;
+                    }
+                }
 
                 ret = write_helper(input3, fd, num_of_bytes);
                 cout << ret << endl;
@@ -336,6 +374,13 @@ int main(int argc, char* argv[])
              * RECOVER A DELETED FILE
              */ 
             case 13:
+                if (!check_if_mounted())
+                    break;
+
+                cout << "Enter a path to a deleted file: ";
+                std::getline(std::cin, input2);
+                ret = file_ununlink(input2);
+                cout << ret << endl;
                 break;
 
             /**
