@@ -24,6 +24,7 @@
  ***********************************************************************/
 int dir_create(std::string filepath);
 
+
 /***********************************************************************
  * Function that takes a given filepath and returns the number of bytes
  * contained within a directory.
@@ -35,6 +36,7 @@ int dir_create(std::string filepath);
  *         succeeded or not
  ***********************************************************************/
 int dir_size(std::string filepath);
+
 
 /***********************************************************************
  * Function that takes a given filepath and prints out the data within
@@ -49,6 +51,17 @@ int dir_size(std::string filepath);
 int dir_read(std::string filepath);
 
 
+/***********************************************************************
+ * Function that takes a given filepath and deletes the directory if
+ * it exists
+ * 
+ * @param filepath is the filepath given by the user, that will be used
+ *                 for the new directory.
+ * 
+ * @return an integer that indicates whether or not the function
+ *         succeeded or not
+ ***********************************************************************/
 int dir_unlink(std::string filepath);
+
 
 #endif

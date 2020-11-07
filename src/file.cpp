@@ -1,9 +1,24 @@
+/*******************************************************************************************************************
+ * CS-450 PA3: Implementation of functions that deal with the creation, reading, and deletion of files.
+ *             
+ * @file file.cpp
+ * @author Alexander Castro
+ * @version 1.0 11/6/20
+ ********************************************************************************************************************/
 #include "../hdr/file.h"
 #include "../hdr/helper.h"
 #include "../hdr/filesys.h"
 
+// GLOBAL FILE SYSTEM
 extern class filesys* myFilesys;
 
+/*********************************************************************************************************************
+ * Function that takes a given filepath and creates a new file in that location. 
+ * 
+ * @param filepath is the filepath given by the user, that will be used for the new file.
+ * 
+ * @return an integer that indicates whether or not the function succeeded or not
+ *********************************************************************************************************************/
 int file_create(std::string filepath)
 {
     // Copy the filepath to new string
@@ -167,6 +182,14 @@ int file_create(std::string filepath)
     return 0;
 }
 
+
+/*********************************************************************************************************************
+ * Function that takes a given filepath and opens the file if it exists and is not already opened. 
+ * 
+ * @param filepath is the filepath given by the user, that will be used for the new file.
+ * 
+ * @return an integer that indicates whether or not the function succeeded or not
+ *********************************************************************************************************************/
 int file_open(std::string filepath)
 {
     // Copy the filepath to new string
@@ -239,6 +262,18 @@ int file_open(std::string filepath)
     return next_fd;
 }
 
+
+/*********************************************************************************************************************
+ * Function that will read a specified number of bytes into a buffer from the given file descriptor.
+ * 
+ * @param file_descriptor is the file descriptor given by the user that will be read from
+ * 
+ * @param buffer is the memory that will be filled with the content from the file
+ * 
+ * @param bytes_to_read is the number of bytes specified by the user that will be read into the buffer
+ * 
+ * @return the number of bytes read from the file
+ **********************************************************************************************************************/
 int file_read(int file_descriptor, uint8_t* buffer, int bytes_to_read)
 {
     file_table_t* ft = myFilesys->getFileTable();
@@ -272,6 +307,18 @@ int file_read(int file_descriptor, uint8_t* buffer, int bytes_to_read)
     return bytes_read;
 }
 
+
+/*********************************************************************************************************************
+ * Function that will write a specified number of bytes to a given file descriptor from the given buffer.
+ * 
+ * @param file_descriptor is the file descriptor given by the user that will be written to
+ * 
+ * @param buffer is the memory that contains the data that will be written to the file descriptor
+ * 
+ * @param bytes_to_read is the number of bytes specified by the user that will be written to the file
+ * 
+ * @return the number of bytes written to the file
+***********************************************************************************************************************/
 int file_write(int file_descriptor, uint8_t* buffer, int buffer_len)
 {
     file_table_t* ft = myFilesys->getFileTable();
@@ -289,7 +336,6 @@ int file_write(int file_descriptor, uint8_t* buffer, int buffer_len)
     {
         return -1;
     }
-
 
     FILE* fp = myFilesys->getPartitionPtr();
     uint32_t inode_num = ft_entry->inode_num;
@@ -377,6 +423,16 @@ int file_write(int file_descriptor, uint8_t* buffer, int buffer_len)
     return buffer_len;
 }
 
+
+/*********************************************************************************************************************
+ * Function that takes a file descriptor and offset and sets the file pointer in the open file table.
+ * 
+ * @param file_descriptor is the file descriptor of the open file
+ * 
+ * @param offset is the number of bytes into the file that the file pointer will be set to.
+ * 
+ * @return an integer that indicates whether or not the function succeeded or not
+ **********************************************************************************************************************/
 int file_seek(int file_descriptor, int offset)
 {
     file_table_t* ft = myFilesys->getFileTable();
@@ -413,6 +469,13 @@ int file_seek(int file_descriptor, int offset)
 }
 
 
+/*********************************************************************************************************************
+ * Function that takes a file descriptor and closes it if it is open
+ * 
+ * @param file_descriptor is the file descriptor of the file that will be closed
+ * 
+ * @return an integer that indicates whether or not the function succeeded or not
+ **********************************************************************************************************************/
 int file_close(int file_descriptor)
 {
     file_table_t* ft = myFilesys->getFileTable();
@@ -428,9 +491,17 @@ int file_close(int file_descriptor)
 
     memset(ft_entry, 255, sizeof(file_table_entry_t));
 
-    return 0;
+    return file_descriptor;
 }
 
+
+/*********************************************************************************************************************
+ * Function that takes a given filepath and removes the file if it exists
+ * 
+ * @param filepath is the filepath given by the user, that will be used to remove the file.
+ * 
+ * @return an integer that indicates whether or not the function succeeded or not
+ **********************************************************************************************************************/
 int file_unlink(std::string filepath)
 {
     // Copy the filepath to new string
@@ -496,6 +567,25 @@ int file_unlink(std::string filepath)
         return -1;
 
     ///////////////////////////////////////////////////////////////////////
+    // Validate that the file is not open
+    ///////////////////////////////////////////////////////////////////////
+
+    file_table_t* ft = myFilesys->getFileTable();
+    file_table_entry_t* ft_entry = (file_table_entry_t *) ft;
+
+    for (int i = 0; i < sizeof(ft->entries); i++)
+    {
+        if (ft_entry->isAllocated)
+        {
+            if (ft_entry->inode_num == fin_dir_inode_index)
+            {
+                return -1;
+            }
+        }
+        ft_entry++;
+    }
+
+    ///////////////////////////////////////////////////////////////////////
     // Make changes to superblock
     ///////////////////////////////////////////////////////////////////////
 
@@ -554,6 +644,14 @@ int file_unlink(std::string filepath)
     return traverse_to_remove_dir_entry_with_inode(fp, parent_db_bm, fin_dir_inode_index, false);
 }
 
+
+/*********************************************************************************************************************
+ * Function that recovers a deleted file if it exisits and has not been corrupted
+ * 
+ * @param filepath is the filepath given by the user, that will be used to recover a deleted file
+ * 
+ * @return an integer that indicates whether or not the function succeeded or not
+ **********************************************************************************************************************/
 int file_ununlink(std::string filepath)
 {
         // Copy the filepath to new string
@@ -690,7 +788,6 @@ int file_ununlink(std::string filepath)
     std::string fn = dirs3.at(dirs3.size() - 1);
 
     traverse_directory_to_recover_file(fp, (uint8_t *) &parent_inode->datablocks, fn.c_str());
-
 
     return 0;
 }

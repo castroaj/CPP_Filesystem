@@ -281,8 +281,8 @@ void traverse_directory_to_recover_file(FILE* fp, uint8_t* db, const char* dirTo
                             {
                                 memcpy(&datablock_entry->filename, dirToLookFor, 16);
 
-                                fseek(fp, sizeof(superblock_t) + (9 * sizeof(inode_block_t)) + (*db * sizeof(data_block_t)), SEEK_SET);
-                                fwrite(datablock, sizeof(SECTOR_SIZE), 1, fp);
+                                fseek(fp, sizeof(superblock_t) + (9 * sizeof(inode_block_t)) + (*db * sizeof(data_block_t)) + (j * sizeof(dir_entry_t)), SEEK_SET);
+                                fwrite(datablock_entry, sizeof(SECTOR_SIZE), 1, fp);
                                 break;
                             }
                         }

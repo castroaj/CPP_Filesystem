@@ -1,3 +1,12 @@
+/*******************************************************************************************************************
+ * CS-450 PA3: Driver of the application. Contains the user interface that will allows the user to interact
+ * with the filesystem.
+ *             
+ * @file main.cpp
+ * @author Alexander Castro
+ * @version 1.0 10/29/20
+ ********************************************************************************************************************/
+
 #include "../hdr/util.h"
 #include "../hdr/file.h"
 #include "../hdr/dir.h"
@@ -6,6 +15,7 @@
 
 // GLOBAL FILESYSTEM 
 filesys* myFilesys;
+
 
 void promptUserWithMenu()
 {
@@ -123,10 +133,11 @@ int main(int argc, char* argv[])
                 cout << "Enter a filename for the new filesystem: ";
                 std::getline(std::cin, input2);
                 ret = format(input2);
+
                 if (ret == -1)
-                    cout << "\nFilesystem failed to format\n\n" << endl;
+                    cout << "\nFilesystem failed to format\n" << endl;
                 else
-                    cout << "\n" << input2 << " has been successfully formatted\n\n" << endl;
+                    cout << "\n" << input2 << " has been successfully formatted\n" << endl;
                 break;
 
             /**
@@ -138,9 +149,9 @@ int main(int argc, char* argv[])
                 ret = mount(input2);
 
                 if (ret == -1)
-                    cout << "\nFilesystem failed to mount\n\n" << endl;
+                    cout << "\nFilesystem failed to mount\n" << endl;
                 else
-                    cout << "\n" << input2 << " has been successfully mounted\n\n" << endl;
+                    cout << "\n" << input2 << " has been successfully mounted\n" << endl;
                 break;
 
             /**
@@ -153,7 +164,11 @@ int main(int argc, char* argv[])
                 cout << "Enter path to a new directory: ";
                 std::getline(std::cin, input2);
                 ret = dir_create(input2);
-                cout << ret << endl;
+
+                if (ret == -1)
+                    cout << "\nCreation of " << input2 << " failed\n" << endl;
+                else
+                    cout << "\n" << input2 << " was sucessfully created\n" << endl;
                 break;
 
             /**
@@ -166,7 +181,12 @@ int main(int argc, char* argv[])
                 cout << "Enter path to a directory to remove: ";
                 std::getline(std::cin, input2);
                 ret = dir_unlink(input2);
-                cout << ret << endl;
+                
+                if (ret == -1)
+                    cout << "\nDeletion of " << input2 << " failed\n" << endl;
+                else
+                    cout << "\n" << input2 << " was sucessfully deleted\n" << endl;
+
                 break;
 
             /**
@@ -179,7 +199,10 @@ int main(int argc, char* argv[])
                 cout << "Enter a path to the directory: ";
                 std::getline(std::cin, input2);
                 ret = dir_read(input2);
-                cout << ret << endl;
+
+                if (ret <= 0)
+                    cout << "\n" << input2 << " was non-existant or empty\n" << endl;
+
                 break;
 
             /**
@@ -192,7 +215,12 @@ int main(int argc, char* argv[])
                 cout << "Enter a path to a new file: ";
                 std::getline(std::cin, input2);
                 ret = file_create(input2);
-                cout << ret << endl;
+
+                if (ret == -1)
+                    cout << "\nCreation of " << input2 << " failed\n" << endl;
+                else
+                    cout << "\n" << input2 << " was sucessfully created\n" << endl;
+
                 break;
 
             /**
@@ -205,7 +233,12 @@ int main(int argc, char* argv[])
                 cout << "Enter path to a file to remove: ";
                 std::getline(std::cin, input2);
                 ret = file_unlink(input2);
-                cout << ret << endl;
+                
+                if (ret == -1)
+                    cout << "\nDeletion of " << input2 << " failed\n" << endl;
+                else
+                    cout << "\n" << input2 << " was sucessfully deleted\n" << endl;
+
                 break;
 
             /**
@@ -270,7 +303,16 @@ int main(int argc, char* argv[])
                 }
 
                 ret = read_helper(input3, fd, num_of_bytes);
-                cout << ret << endl;
+                
+                if (ret > 0)
+                {
+                    cout << "\n" << ret << " bytes have been sucessfully read into " << input3 << "\n" << endl;
+                }
+                else
+                {
+                    cout << "\nThe read operation has failed\n" << endl;
+                }
+            
                 break;
 
             /**
@@ -318,7 +360,16 @@ int main(int argc, char* argv[])
                 }
 
                 ret = write_helper(input3, fd, num_of_bytes);
-                cout << ret << endl;
+                
+                if (ret > 0)
+                {
+                    cout << "\n" << ret << " bytes have been sucessfully written from " << input3 << "\n" << endl;
+                }
+                else
+                {
+                    cout << "\nThe write operation has failed\n" << endl;
+                }
+
                 break;
 
             /**
@@ -346,7 +397,14 @@ int main(int argc, char* argv[])
                 
                 ret = file_seek(fd, num_of_bytes);
 
-                cout << ret << endl;
+                if (ret >= 0)
+                {
+                    cout << "\nThe new location of the file pointer in descriptor " << fd << " is " << ret << "\n" << endl;
+                }
+                else
+                {
+                    cout << "\nThe seek operation has failed\n" << endl;
+                }
 
                 break;
 
@@ -366,7 +424,11 @@ int main(int argc, char* argv[])
                     break;
 
                 ret = file_close(fd);
-                cout << ret << endl;
+                
+                if (ret != -1)
+                    cout << "\nThe file descriptor " << ret << " has been closed." << "\n" << endl;
+                else
+                    cout << "\nThe file failed to close\n" << endl;
 
                 break;
 
@@ -380,7 +442,12 @@ int main(int argc, char* argv[])
                 cout << "Enter a path to a deleted file: ";
                 std::getline(std::cin, input2);
                 ret = file_ununlink(input2);
-                cout << ret << endl;
+
+                if (ret != -1)
+                    cout << "\n" << input2 << " was successfully recovered\n" << endl;
+                else
+                    cout << "\n" << input2 << " could not be recovered\n" << endl;
+
                 break;
 
             /**
@@ -402,7 +469,7 @@ int main(int argc, char* argv[])
 		        break;
 
             default:
-                cout << "\nInvalid Input" << endl;
+                cout << "\nInvalid Input\n" << endl;
                 promptUser = true;
                 break;
         }

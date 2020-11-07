@@ -25,6 +25,11 @@
     #define INODE_SECTORS 9
     #define DATA_SECTORS 246
 
+#endif
+
+#ifndef MAIN_STRUCTS
+#define MAIN_STRUCTS
+
     #pragma pack(1)
 
     ///////////////////////////////////////////////////////////////////
@@ -80,6 +85,19 @@
 
     #endif 
 
+    ////////////////////////////////////////////////////////////////////
+
+    #ifndef DIR_ENTRY
+    #define DIR_ENTRY
+
+        typedef struct {
+            char filename[16];
+            uint32_t inode_num;
+        } dir_entry_t;
+
+    #endif 
+
+
     ///////////////////////////////////////////////////////////////////
 
     #ifndef PARTITION
@@ -117,18 +135,5 @@
 
 
     #endif
-
-    ////////////////////////////////////////////////////////////////////
-
-    #ifndef DIR_ENTRY
-    #define DIR_ENTRY
-
-        typedef struct {
-            char filename[16];
-            uint32_t inode_num;
-        } dir_entry_t;
-
-    #endif 
-
 
 #endif

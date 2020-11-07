@@ -1,8 +1,23 @@
+/*********************************************************************************************************
+ * CS-450 PA3: Implementation of utility functions for the filesystem 
+ * 
+ * @file util.cpp
+ * @author Alexander Castro
+ * @version 1.0 11/7/20
+ *********************************************************************************************************/
 #include "../hdr/util.h"
 #include "../hdr/filesys.h"
 
+//GLOBAL FILESYSTEM
 extern class filesys* myFilesys;
 
+/**********************************************************************************************************
+ * Function that takes a given filename and creates a formatted filesystem file in the current directory
+ * 
+ * @param filename is the filename for the new partition file
+ * 
+ * @return an integer that indicates whether or not the function succeeded or not
+ **********************************************************************************************************/
 int format(std::string fileName)
 {
     partition_t* partition = (partition_t*) malloc(sizeof(partition_t));
@@ -57,6 +72,13 @@ int format(std::string fileName)
     return 0;
 }
 
+/****************************************************************************************************************
+ * Function that mounts a filesytem with the given filename.
+ * 
+ * @param filename is name of the filesystem that will be mounted
+ * 
+ * @return an integer that indicates whether or not the function succeeded or not
+ ****************************************************************************************************************/
 int mount(std::string fileName)
 {
     if (myFilesys)
@@ -72,6 +94,7 @@ int mount(std::string fileName)
         return -1;
 
     uint8_t buffer[sizeof(superblock_t)];
+
     if (fread(buffer, sizeof(superblock_t), 1, fd) == 0) 
     {
         return -1;

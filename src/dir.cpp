@@ -1,9 +1,26 @@
+/*******************************************************************************************************************
+ * CS-450 PA3: Implementation of functions that deal with the creation, reading, and deletion of directories.
+ *             
+ * @file dir.cpp
+ * @author Alexander Castro
+ * @version 1.0 11/6/20
+ ********************************************************************************************************************/
+
 #include "../hdr/dir.h"
 #include "../hdr/helper.h"
 #include "../hdr/filesys.h"
 
 extern class filesys* myFilesys;
 
+/********************************************************************************************************************
+ * Function that takes a given filepath and creates a new directory in that location.
+ * 
+ * @param filepath is the filepath given by the user, that will be used
+ *                 for the new directory.
+ * 
+ * @return an integer that indicates whether or not the function
+ *         succeeded or not
+  *******************************************************************************************************************/
 int dir_create(std::string filepath)
 {
     // Copy the filepath to new string
@@ -18,11 +35,13 @@ int dir_create(std::string filepath)
     std::vector<std::string> dirs;
     make_vector_of_directories(filepath, &dirs);
 
+    // Gets the file pointer from the mounted filesystem
     FILE* fp = myFilesys->getPartitionPtr();
 
     // Find the inode of the last directory in the given filepath
     int fin_dir_inode_index = get_last_directory_inode_index(&dirs, fp, 0, go_to_len_zero, false);
 
+    // Check to see if inode index is valid
     if (fin_dir_inode_index == -1)
         return -1;
 
@@ -67,7 +86,7 @@ int dir_create(std::string filepath)
 
     for (uint8_t i = 0; i < dir_entries.size(); i++)
     {
-        dir_entry_t* cur_dir = dir_entries.at(0);
+        dir_entry_t* cur_dir = dir_entries.at(i);
 
         char dirToLookFor[16];
         memset(dirToLookFor, 0, 16);
@@ -167,6 +186,15 @@ int dir_create(std::string filepath)
     return 0;
 }
 
+/******************************************************************************************************************
+ * Function that takes a given filepath and returns the number of bytes contained within a directory.
+ * 
+ * @param filepath is the filepath given by the user, that will be
+ *                 searched for.
+ * 
+ * @return an integer that indicates whether or not the funtion 
+ *         succeeded or not
+*******************************************************************************************************************/
 int dir_size(std::string filepath)
 {
     // Copy the filepath to new string
@@ -179,6 +207,7 @@ int dir_size(std::string filepath)
     
     // Create a vector of all the directories that need to be visited
     std::vector<std::string> dirs;
+
     if (filepath.compare("/") != 0)
         make_vector_of_directories(filepath, &dirs);
     else
@@ -206,6 +235,15 @@ int dir_size(std::string filepath)
     return inode->size;
 }
 
+/******************************************************************************************************************** 
+ * Function that takes a given filepath and prints out the data within that directory if it exists
+ * 
+ * @param filepath is the filepath given by the user, that will be
+ *                 searched for.
+ * 
+ * @return an integer that indicates whether or not the funtion 
+ *         succeeded or not
+ *******************************************************************************************************************/
 int dir_read(std::string filepath)
 {
     // Copy the filepath to new string
@@ -244,8 +282,8 @@ int dir_read(std::string filepath)
 
     uint8_t* db = (uint8_t *) &inode->datablocks;
 
+    // Get all of the content from the current directory's datablock
     std::vector<dir_entry_t *> dir_entries;
-
     uint32_t num_of_items = get_all_content_from_directory(fp, db, &dir_entries);
 
     if (num_of_items != dir_entries.size())
@@ -253,16 +291,28 @@ int dir_read(std::string filepath)
 
     if (num_of_items > 0)
     {
+        std::cout << "\nDirectory Contents:\n";
         for (unsigned int i = 0; i < num_of_items; i++)
         {
             dir_entry_t* cur_entry = dir_entries.at(i);
             std::cout << cur_entry->filename << std::endl;
             free(cur_entry);
         }
+        std::cout << "\n";
     }
+
     return num_of_items;
 }
 
+/******************************************************************************************************************
+ * Function that takes a given filepath and deletes the directory if it exists
+ * 
+ * @param filepath is the filepath given by the user, that will be used
+ *                 for the new directory.
+ * 
+ * @return an integer that indicates whether or not the function
+ *         succeeded or not
+ *******************************************************************************************************************/
 int dir_unlink(std::string filepath)
 {
     // Copy the filepath to new string
@@ -276,6 +326,7 @@ int dir_unlink(std::string filepath)
     std::vector<std::string> dirs;
     make_vector_of_directories(filepath, &dirs);
 
+    // Create a second vector in order to get the parent inode
     std::vector<std::string> dirs2;
     make_vector_of_directories(filepath, &dirs2);
 
@@ -320,13 +371,11 @@ int dir_unlink(std::string filepath)
     fseek(fp, sizeof(superblock_t) + (parent_inode_index * sizeof(inode_t)), SEEK_SET);
     fread(parent_inode_buffer, sizeof(inode_t), 1, fp);
 
-    ///////////////////////////////////////////////////////////////////////
-    // Check to see if inode is directory
-    ///////////////////////////////////////////////////////////////////////
-
+    // Check to see if inode is a directory
     if (inode->type != 0x3333)
         return -1;
 
+    // Validate that the directory is empty
     if (inode->size != 0)
         return -1;
 
@@ -339,18 +388,17 @@ int dir_unlink(std::string filepath)
     inode_bmap += fin_dir_inode_index;
     *inode_bmap = 0x00;
 
-    std::vector<uint8_t> cur_data_blocks;
-
     // Get the datablock bitmap from the inode
     uint8_t* db_bm = (uint8_t *) &inode->datablocks;
 
+    // Get a vector of the datablock numbers
+    std::vector<uint8_t> cur_data_blocks;
     make_vector_of_allocated_data_blocks(db_bm, sizeof(inode->datablocks), &cur_data_blocks);
-
 
     uint8_t* sb_db_bmap = (uint8_t *) &sb->dblock_bmap; 
     uint8_t* sb_db_bmap_cpy = sb_db_bmap;
 
-
+    // Remove the previously allocated data blocks
     for (int i = 0; i < cur_data_blocks.size(); i++)
     {
         sb_db_bmap_cpy += cur_data_blocks.at(i);
@@ -365,9 +413,6 @@ int dir_unlink(std::string filepath)
     ///////////////////////////////////////////////////////////////////////
     // Make changes to inode
     ///////////////////////////////////////////////////////////////////////
-
-    //std::memset(inode, 0x00, sizeof(inode_t));
-
     inode->state = 0x0000;
 
     // Write updated directory inode to file
@@ -387,5 +432,4 @@ int dir_unlink(std::string filepath)
     fwrite((void*) parent_inode, sizeof(inode_t), 1, fp);
 
     return traverse_to_remove_dir_entry_with_inode(fp, parent_db_bm, fin_dir_inode_index, true);
-
 }

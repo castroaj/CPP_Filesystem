@@ -2,7 +2,7 @@
  * CS-450 PA3: Set of helper functions that abstract away some of the 
  *             reusable functionality within the application.
  * 
- * @file util.h
+ * @file helper.h
  * @author Alexander Castro
  * @version 1.0 10/29/20
  ***********************************************************************/
