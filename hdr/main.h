@@ -97,20 +97,6 @@
 
     #endif 
 
-
-    ///////////////////////////////////////////////////////////////////
-
-    #ifndef PARTITION
-    #define PARTITION
-
-        typedef struct {
-            superblock_t superblock;
-            inode_block_t inode_blocks[9];
-            data_block_t datablocks[246];
-        } partition_t;
-
-    #endif 
-
     ///////////////////////////////////////////////////////////////////
 
     #ifndef FILE_TABLE_ENTRY

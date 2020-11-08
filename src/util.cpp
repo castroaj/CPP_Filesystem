@@ -20,39 +20,6 @@ extern class filesys* myFilesys;
  **********************************************************************************************************/
 int format(std::string fileName)
 {
-    partition_t* partition = (partition_t*) malloc(sizeof(partition_t));
-
-    if (!partition) return -1;
-
-    // Zero out partition
-    std::memset(partition, 0, sizeof(partition_t));
-
-    // initalize superblock
-    partition->superblock.magic_num = MAGIC_NUM;
-    partition->superblock.reserved_sectors = RESERVED_SECTORS;
-    partition->superblock.inode_sectors = INODE_SECTORS;
-    partition->superblock.data_sectors = DATA_SECTORS;
-    
-    // Set first inode as allocated for root directory
-    partition->superblock.inode_bmap[0] = 0x11;
-
-    // Set first dblock as allocated for root directory
-    partition->superblock.dblock_bmap[0] = 0x11;
-
-    // Get first inode block
-    inode_block_t* first_inode_block = (inode_block_t*) &partition->inode_blocks;
-
-    // Get first inode in first block for the root directory
-    inode_t* root_dir_inode = (inode_t*) &first_inode_block->inodes[0];
-
-    // Setup Root directory inode
-    root_dir_inode->state = 0x1111;
-    root_dir_inode->type = 0x3333;
-    root_dir_inode->size = 0;
-    int8_t* data_block_arr = (int8_t*) &root_dir_inode->datablocks;
-    std::memset(data_block_arr, -1, sizeof(root_dir_inode->datablocks));
-    *data_block_arr = 0;
-
     if (fileName.length() == 0) return -1;
 
     // Convert filename to char ptr
@@ -60,14 +27,56 @@ int format(std::string fileName)
     strcpy(fn, fileName.c_str());
 
     // Open and write partition to specified file
-    FILE* fd = fopen(fn, "w+");
+    FILE* fp = fopen(fn, "w+");
 
-    if (!fd) 
+    if (!fp) 
         return -1;
 
-    fwrite((void*) partition, sizeof(partition_t), 1, fd);
-    fclose(fd);
-    free(partition);
+    superblock_t sb;
+
+    std::memset(&sb, 0, sizeof(superblock_t));
+
+    sb.magic_num = MAGIC_NUM;
+    sb.reserved_sectors = RESERVED_SECTORS;
+    sb.inode_sectors = INODE_SECTORS;
+    sb.data_sectors = DATA_SECTORS;
+
+    // Set first inode as allocated for root directory
+    sb.inode_bmap[0] = 0x11;
+
+    // Set first dblock as allocated for root directory
+    sb.dblock_bmap[0] = 0x11;
+
+    // Write superblock to file
+    fwrite(&sb, sizeof(superblock_t), 1, fp);
+
+    // Create the root inode
+    inode_t root_dir_inode;
+    root_dir_inode.state = 0x1111;
+    root_dir_inode.type = 0x3333;
+    root_dir_inode.size = 0;
+    uint8_t* data_block_arr = (uint8_t*) &root_dir_inode.datablocks;
+    std::memset(data_block_arr, 0xff, sizeof(root_dir_inode.datablocks));
+    *data_block_arr = 0x00;
+
+    // Write root inode to file
+    fwrite(&root_dir_inode, sizeof(inode_t), 1, fp);
+
+    // Write zeroed out memory for the rest of the inode sectors
+    uint8_t empty_inode_sectors[sizeof(inode_t) * 143];
+    memset(empty_inode_sectors, 0x00, sizeof(inode_t) * 143);
+    fwrite(empty_inode_sectors, sizeof(inode_t) * 143, 1, fp);
+
+    // Write zeroed out memory for the data sectors
+    uint8_t empty_data_block[sizeof(data_block_t)];
+    memset(empty_data_block, 0x00, sizeof(data_block_t));
+    
+    for (int i = 0; i < DATA_SECTORS; i++)
+    {
+        fwrite(empty_data_block, sizeof(data_block_t), 1, fp);
+    }
+
+    fclose(fp);
 
     return 0;
 }

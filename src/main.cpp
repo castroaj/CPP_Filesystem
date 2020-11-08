@@ -458,15 +458,15 @@ int main(int argc, char* argv[])
                 promptUser = false;
                 break;
 
-            /**
-             * PRINT FILE TABLE
-             */ 
-            case 15:
-                if (!check_if_mounted())
-                    break;
+            // /**
+            //  * PRINT FILE TABLE
+            //  */ 
+            // case 15:
+            //     if (!check_if_mounted())
+            //         break;
 
-		        print_open_file_table();
-		        break;
+		    //     print_open_file_table();
+		    //     break;
 
             default:
                 cout << "\nInvalid Input\n" << endl;
