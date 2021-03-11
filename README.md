@@ -2,7 +2,7 @@
 
     Author: Alexander Castro
     
-    Implementation of a multipurpose filesystem in c++.This application allows
+    Implementation of a multipurpose filesystem in c++. This application allows
     for the formatting, mounting, and manipulation of a custom multipurpose 
     filesystem. The applications provides the user with the following user 
     interface to acomplish these tasks:
@@ -19,7 +19,7 @@
       10) Write to a file
       11) Seek to a location in a file
       12) Close a file
-      13) Recover a deleted file (extra credit)
+      13) Recover a deleted file
       14) Exit the program
     
     Each option provides the user with the labeled functionality.
